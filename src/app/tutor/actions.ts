@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import {
   createClient,
   getAuthRole,
@@ -147,6 +148,8 @@ export async function createStudent(
     };
   }
 
+  revalidatePath("/tutor");
+
   return {
     success: true,
     studentId: student.id,
@@ -276,6 +279,8 @@ export async function scheduleSession(
         sessionError?.message ?? "Failed to schedule the session.",
     };
   }
+
+  revalidatePath("/tutor");
 
   return {
     success: true,
@@ -462,6 +467,9 @@ export async function generateSessionPlanForSession(
       error: "The AI plan was generated but could not be saved.",
     };
   }
+
+  // Refresh the tutor dashboard so the newly saved plan is visible.
+  revalidatePath("/tutor");
 
   return {
     success: true,

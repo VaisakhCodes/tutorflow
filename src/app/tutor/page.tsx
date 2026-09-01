@@ -2,6 +2,39 @@ import { getAuthRole, createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import AddStudentForm from "./add-student-form";
 import ScheduleSessionForm from "./schedule-session-form";
+import SessionAIPlan from "./session-ai-plan";
+
+type SessionStudent = {
+  name: string;
+  subject: string;
+};
+
+type SessionRecord = {
+  id: string;
+  scheduled_at: string;
+  topic: string;
+  status: string;
+  student_id: string;
+  students: SessionStudent | SessionStudent[] | null;
+};
+
+type AIPlanRecord = {
+  id: string;
+  session_id: string;
+  objectives: unknown;
+  lesson_outline: unknown;
+  practice_questions: unknown;
+};
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(
+    (item): item is string => typeof item === "string"
+  );
+}
 
 export default async function TutorPage() {
   const auth = await getAuthRole();
@@ -45,7 +78,7 @@ export default async function TutorPage() {
     .eq("tutor_id", auth.userId)
     .order("created_at", { ascending: false });
 
-  const { data: sessions, error: sessionsError } = await supabase
+  const { data: sessionsData, error: sessionsError } = await supabase
     .from("sessions")
     .select(
       `
@@ -62,6 +95,41 @@ export default async function TutorPage() {
     )
     .eq("tutor_id", auth.userId)
     .order("scheduled_at", { ascending: true });
+
+  const sessions = (sessionsData ?? []) as SessionRecord[];
+
+  const sessionIds = sessions.map((session) => session.id);
+
+  let aiPlans: AIPlanRecord[] = [];
+
+  if (sessionIds.length > 0) {
+    const { data: aiPlansData, error: aiPlansError } = await supabase
+      .from("ai_plans")
+      .select(
+        "id, session_id, objectives, lesson_outline, practice_questions"
+      )
+      .in("session_id", sessionIds);
+
+    if (aiPlansError) {
+      console.error("Failed to load AI plans:", aiPlansError);
+    } else {
+      aiPlans = (aiPlansData ?? []) as AIPlanRecord[];
+    }
+  }
+
+  const aiPlanBySessionId = new Map(
+    aiPlans.map((plan) => [
+      plan.session_id,
+      {
+        id: plan.id,
+        objectives: normalizeStringArray(plan.objectives),
+        lesson_outline: normalizeStringArray(plan.lesson_outline),
+        practice_questions: normalizeStringArray(
+          plan.practice_questions
+        ),
+      },
+    ])
+  );
 
   const scheduleStudents =
     students?.map((student) => ({
@@ -122,8 +190,8 @@ export default async function TutorPage() {
             </div>
 
             <span className="text-sm font-medium text-slate-500">
-              {sessions?.length ?? 0}{" "}
-              {sessions?.length === 1 ? "session" : "sessions"}
+              {sessions.length}{" "}
+              {sessions.length === 1 ? "session" : "sessions"}
             </span>
           </div>
 
@@ -133,7 +201,7 @@ export default async function TutorPage() {
                 Failed to load sessions. Please try again.
               </div>
             </div>
-          ) : sessions && sessions.length > 0 ? (
+          ) : sessions.length > 0 ? (
             <div className="divide-y divide-slate-200">
               {sessions.map((session) => {
                 const sessionStudent = Array.isArray(session.students)
@@ -143,6 +211,8 @@ export default async function TutorPage() {
                 const scheduledDate = new Date(
                   session.scheduled_at
                 );
+
+                const aiPlan = aiPlanBySessionId.get(session.id);
 
                 return (
                   <div
@@ -157,7 +227,8 @@ export default async function TutorPage() {
                           </h3>
 
                           <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs">
-                            {sessionStudent?.subject ?? "Unknown subject"}
+                            {sessionStudent?.subject ??
+                              "Unknown subject"}
                           </span>
                         </div>
 
@@ -192,6 +263,11 @@ export default async function TutorPage() {
                               session.status.slice(1)}
                       </span>
                     </div>
+
+                    <SessionAIPlan
+                      sessionId={session.id}
+                      plan={aiPlan ?? null}
+                    />
                   </div>
                 );
               })}

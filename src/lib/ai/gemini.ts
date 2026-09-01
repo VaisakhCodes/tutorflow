@@ -1,11 +1,44 @@
 import { GoogleGenAI } from "@google/genai";
 
-const GEMINI_MODEL = "gemini-3.7-flash";
+const PRIMARY_GEMINI_MODEL = "gemini-3.7-flash";
+const FALLBACK_GEMINI_MODEL = "gemini-3.6-flash";
+
+const MAX_RETRIES = 2;
+const RETRY_DELAYS_MS = [2000, 5000];
 
 export type SessionPlan = {
   objectives: string[];
   lesson_outline: string[];
   practice_questions: string[];
+};
+
+const SESSION_PLAN_SCHEMA = {
+  type: "object",
+  properties: {
+    objectives: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    lesson_outline: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+    practice_questions: {
+      type: "array",
+      items: {
+        type: "string",
+      },
+    },
+  },
+  required: [
+    "objectives",
+    "lesson_outline",
+    "practice_questions",
+  ],
 };
 
 function getGeminiClient(): GoogleGenAI | null {
@@ -18,6 +51,81 @@ function getGeminiClient(): GoogleGenAI | null {
   return new GoogleGenAI({
     apiKey,
   });
+}
+
+function getErrorStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  const candidate = error as {
+    status?: unknown;
+    code?: unknown;
+    message?: unknown;
+  };
+
+  if (typeof candidate.status === "number") {
+    return candidate.status;
+  }
+
+  if (typeof candidate.code === "number") {
+    return candidate.code;
+  }
+
+  if (typeof candidate.message === "string") {
+    const match = candidate.message.match(/\b(429|500|503|504)\b/);
+
+    if (match) {
+      return Number(match[1]);
+    }
+  }
+
+  return undefined;
+}
+
+function isRetryableError(error: unknown): boolean {
+  const status = getErrorStatus(error);
+
+  return (
+    status === 429 ||
+    status === 500 ||
+    status === 503 ||
+    status === 504
+  );
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function generateWithRetry(
+  ai: GoogleGenAI,
+  model: string,
+  prompt: string
+) {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    try {
+      return await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseJsonSchema: SESSION_PLAN_SCHEMA,
+        },
+      });
+    } catch (error) {
+      const retryable = isRetryableError(error);
+      const hasRetriesLeft = attempt < MAX_RETRIES;
+
+      if (!retryable || !hasRetriesLeft) {
+        throw error;
+      }
+
+      await sleep(RETRY_DELAYS_MS[attempt]);
+    }
+  }
+
+  throw new Error(`Gemini request failed for model ${model}.`);
 }
 
 export async function generateSessionPlan(params: {
@@ -77,41 +185,43 @@ REQUIREMENTS
 7. Return only the requested structured JSON data.
 `;
 
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: prompt,
-    config: {
-        responseMimeType: "application/json",
-        responseJsonSchema: {
-        type: "object",
-        properties: {
-            objectives: {
-            type: "array",
-            items: {
-                type: "string",
-            },
-            },
-            lesson_outline: {
-            type: "array",
-            items: {
-                type: "string",
-            },
-            },
-            practice_questions: {
-            type: "array",
-            items: {
-                type: "string",
-            },
-            },
-        },
-        required: [
-            "objectives",
-            "lesson_outline",
-            "practice_questions",
-        ],
-        },
-    },
-    });
+  let response;
+
+  try {
+    // Primary model.
+    response = await generateWithRetry(
+      ai,
+      PRIMARY_GEMINI_MODEL,
+      prompt
+    );
+  } catch (primaryError) {
+    // Only use the fallback for transient API availability/rate-limit
+    // errors. Non-transient errors should still surface immediately.
+    if (!isRetryableError(primaryError)) {
+      throw primaryError;
+    }
+
+    try {
+      // Fallback model.
+      response = await generateWithRetry(
+        ai,
+        FALLBACK_GEMINI_MODEL,
+        prompt
+      );
+    } catch (fallbackError) {
+      console.error(
+        `Primary Gemini model "${PRIMARY_GEMINI_MODEL}" failed:`,
+        primaryError
+      );
+
+      console.error(
+        `Fallback Gemini model "${FALLBACK_GEMINI_MODEL}" failed:`,
+        fallbackError
+      );
+
+      throw fallbackError;
+    }
+  }
 
   if (!response.text) {
     throw new Error("Gemini returned an empty response.");
@@ -140,12 +250,23 @@ REQUIREMENTS
   if (
     !Array.isArray(plan.objectives) ||
     plan.objectives.length !== 3 ||
+    !plan.objectives.every(
+      (item) => typeof item === "string" && item.trim().length > 0
+    ) ||
     !Array.isArray(plan.lesson_outline) ||
     plan.lesson_outline.length !== 4 ||
+    !plan.lesson_outline.every(
+      (item) => typeof item === "string" && item.trim().length > 0
+    ) ||
     !Array.isArray(plan.practice_questions) ||
-    plan.practice_questions.length !== 3
+    plan.practice_questions.length !== 3 ||
+    !plan.practice_questions.every(
+      (item) => typeof item === "string" && item.trim().length > 0
+    )
   ) {
-    throw new Error("Gemini returned an incorrectly structured session plan.");
+    throw new Error(
+      "Gemini returned an incorrectly structured session plan."
+    );
   }
 
   return plan;
