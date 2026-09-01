@@ -1,12 +1,12 @@
-import { getAuthRole } from "@/lib/supabase/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthRole, createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import AddStudentForm from "./add-student-form";
+import ScheduleSessionForm from "./schedule-session-form";
 
 export default async function TutorPage() {
   const auth = await getAuthRole();
 
-  // Server-side authorization
+  // Server-side authorization.
   if (!auth) {
     redirect("/login");
   }
@@ -28,6 +28,7 @@ export default async function TutorPage() {
           <h1 className="text-lg font-semibold text-red-700">
             Supabase is not configured
           </h1>
+
           <p className="mt-2 text-sm text-slate-600">
             Please check the environment configuration.
           </p>
@@ -44,11 +45,38 @@ export default async function TutorPage() {
     .eq("tutor_id", auth.userId)
     .order("created_at", { ascending: false });
 
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("sessions")
+    .select(
+      `
+        id,
+        scheduled_at,
+        topic,
+        status,
+        student_id,
+        students (
+          name,
+          subject
+        )
+      `
+    )
+    .eq("tutor_id", auth.userId)
+    .order("scheduled_at", { ascending: true });
+
+  const scheduleStudents =
+    students?.map((student) => ({
+      id: student.id,
+      name: student.name,
+      subject: student.subject,
+    })) ?? [];
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <span className="text-xl font-bold text-blue-600">TutorFlow</span>
+          <span className="text-xl font-bold text-blue-600">
+            TutorFlow
+          </span>
 
           <form action="/auth/logout" method="POST">
             <button
@@ -72,17 +100,123 @@ export default async function TutorPage() {
           </h1>
 
           <p className="mt-2 text-slate-600">
-            Manage your students and their learning profiles.
+            Manage your students, sessions, and learning profiles.
           </p>
         </div>
 
         <AddStudentForm />
+
+        <ScheduleSessionForm students={scheduleStudents} />
+
+        {/* Sessions */}
+        <section className="mb-8 bg-white border border-slate-200 rounded-xl shadow-xs">
+          <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Sessions
+              </h2>
+
+              <p className="text-sm text-slate-500 mt-1">
+                Your scheduled and active tutoring sessions.
+              </p>
+            </div>
+
+            <span className="text-sm font-medium text-slate-500">
+              {sessions?.length ?? 0}{" "}
+              {sessions?.length === 1 ? "session" : "sessions"}
+            </span>
+          </div>
+
+          {sessionsError ? (
+            <div className="p-6">
+              <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+                Failed to load sessions. Please try again.
+              </div>
+            </div>
+          ) : sessions && sessions.length > 0 ? (
+            <div className="divide-y divide-slate-200">
+              {sessions.map((session) => {
+                const sessionStudent = Array.isArray(session.students)
+                  ? session.students[0] ?? null
+                  : session.students;
+
+                const scheduledDate = new Date(
+                  session.scheduled_at
+                );
+
+                return (
+                  <div
+                    key={session.id}
+                    className="px-6 py-5 hover:bg-slate-50 transition"
+                  >
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-semibold text-slate-900">
+                            {sessionStudent?.name ?? "Unknown student"}
+                          </h3>
+
+                          <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs">
+                            {sessionStudent?.subject ?? "Unknown subject"}
+                          </span>
+                        </div>
+
+                        <p className="mt-2 text-sm font-medium text-slate-800">
+                          {session.topic}
+                        </p>
+
+                        <p className="mt-1 text-sm text-slate-500">
+                          {scheduledDate.toLocaleString([], {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          session.status === "scheduled"
+                            ? "bg-amber-50 text-amber-700 border border-amber-100"
+                            : session.status === "in_progress"
+                              ? "bg-blue-50 text-blue-700 border border-blue-100"
+                              : session.status === "completed"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                : "bg-violet-50 text-violet-700 border border-violet-100"
+                        }`}
+                      >
+                        {session.status === "in_progress"
+                          ? "In progress"
+                          : session.status === "ai_reviewed"
+                            ? "AI reviewed"
+                            : session.status.charAt(0).toUpperCase() +
+                              session.status.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-10 text-center">
+              <h3 className="text-base font-semibold text-slate-900">
+                No sessions yet
+              </h3>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Scheduled sessions will appear here.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* Students */}
         <section className="bg-white border border-slate-200 rounded-xl shadow-xs">
           <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
                 Students
               </h2>
+
               <p className="text-sm text-slate-500 mt-1">
                 Students assigned to your tutor account.
               </p>
@@ -128,6 +262,7 @@ export default async function TutorPage() {
                       <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                         Learning goals
                       </p>
+
                       <p className="mt-1 text-sm text-slate-600">
                         {student.learning_goals}
                       </p>
@@ -138,6 +273,7 @@ export default async function TutorPage() {
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                       Weak areas
                     </p>
+
                     <p className="mt-1 text-sm text-slate-600">
                       {student.weak_areas}
                     </p>
@@ -150,8 +286,10 @@ export default async function TutorPage() {
               <h3 className="text-base font-semibold text-slate-900">
                 No students yet
               </h3>
+
               <p className="mt-2 text-sm text-slate-500">
-                Student accounts and profiles will appear here once created.
+                Student accounts and profiles will appear here once
+                created.
               </p>
             </div>
           )}
