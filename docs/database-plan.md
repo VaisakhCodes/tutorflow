@@ -5,11 +5,10 @@ This document outlines the planned entities, fields, and expected relationships 
 ### Profiles
 Identity and role information associated with authenticated users.
 - `id`: UUID (Primary Key, references Supabase auth.users)
-- `email`: String
-- `full_name`: String
 - `role`: Enum ('tutor', 'student')
 - `created_at`: Timestamp
-- `updated_at`: Timestamp
+
+*(Step 2 relies on this minimal profiles structure for authoritative server-side role resolution).*
 
 ### Students
 A student belongs to one tutor and contains:
