@@ -61,7 +61,10 @@ export async function getAuthRole(): Promise<{
     .eq("id", userId)
     .single();
 
-  const role = (profile?.role as UserRole) || (claimsData.claims.role as UserRole) || null;
+  const role =
+    profile?.role === "tutor" || profile?.role === "student"
+      ? profile.role
+      : null;
 
   return {
     userId,

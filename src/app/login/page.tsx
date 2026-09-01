@@ -31,7 +31,10 @@ export default function LoginPage() {
           .eq("id", claimsData.claims.sub)
           .single();
 
-        const role = profile?.role || claimsData.claims.role;
+        const role =
+          profile?.role === "tutor" || profile?.role === "student"
+            ? profile.role
+            : null;
         if (role === "tutor") {
           router.replace("/tutor");
           return;
@@ -85,7 +88,10 @@ export default function LoginPage() {
           .eq("id", data.user.id)
           .single();
 
-        const role = profile?.role || data.user.user_metadata?.role;
+        const role =
+          profile?.role === "tutor" || profile?.role === "student"
+            ? profile.role
+            : null;
 
         if (role === "tutor") {
           router.push("/tutor");
