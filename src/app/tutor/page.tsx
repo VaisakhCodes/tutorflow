@@ -1,6 +1,7 @@
 import { getAuthRole } from "@/lib/supabase/server";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import AddStudentForm from "./add-student-form";
 
 export default async function TutorPage() {
   const auth = await getAuthRole();
@@ -75,6 +76,7 @@ export default async function TutorPage() {
           </p>
         </div>
 
+        <AddStudentForm />
         <section className="bg-white border border-slate-200 rounded-xl shadow-xs">
           <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
             <div>
