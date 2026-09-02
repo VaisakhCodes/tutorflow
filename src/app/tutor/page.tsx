@@ -4,6 +4,8 @@ import {
 } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 import AddStudentForm from "./add-student-form";
 import ScheduleSessionForm from "./schedule-session-form";
 import SessionAIPlan from "./session-ai-plan";
@@ -11,6 +13,8 @@ import SessionNotes from "./session-notes";
 import SessionAIReview from "./session-ai-review";
 
 import {
+  createHomeworkAction,
+  deleteHomeworkAction,
   updateSessionStatusAction,
 } from "./actions";
 
@@ -50,6 +54,15 @@ type SessionAIReviewRecord = {
   session_id: string;
   summary: string;
   next_session_suggestion: string;
+};
+
+type HomeworkRecord = {
+  id: string;
+  student_id: string;
+  session_id: string;
+  task: string;
+  completed: boolean;
+  created_at: string;
 };
 
 function normalizeStringArray(
@@ -303,6 +316,48 @@ export default async function TutorPage() {
       ])
     );
 
+  let homework: HomeworkRecord[] = [];
+
+  if (sessionIds.length > 0) {
+    const {
+      data: homeworkData,
+      error: homeworkError,
+    } = await supabase
+      .from("homework")
+      .select(
+        "id, student_id, session_id, task, completed, created_at"
+      )
+      .in("session_id", sessionIds)
+      .order("created_at", {
+        ascending: true,
+      });
+
+    if (homeworkError) {
+      console.error(
+        "Failed to load homework:",
+        homeworkError
+      );
+    } else {
+      homework =
+        (homeworkData ?? []) as HomeworkRecord[];
+    }
+  }
+
+  const homeworkBySessionId = new Map<string, HomeworkRecord[]>();
+
+  for (const homeworkItem of homework) {
+    const items =
+      homeworkBySessionId.get(
+        homeworkItem.session_id
+      ) ?? [];
+
+    items.push(homeworkItem);
+    homeworkBySessionId.set(
+      homeworkItem.session_id,
+      items
+    );
+  }
+
   const scheduleStudents =
     students?.map((student) => ({
       id: student.id,
@@ -407,6 +462,17 @@ export default async function TutorPage() {
                   sessionReviewsBySessionId.get(
                     session.id
                   ) ?? null;
+
+                const sessionHomework =
+                  homeworkBySessionId.get(
+                    session.id
+                  ) ?? [];
+
+                const canManageHomework =
+                  session.status ===
+                    "completed" ||
+                  session.status ===
+                    "ai_reviewed";
 
                 const canStart =
                   session.status ===
@@ -522,6 +588,142 @@ export default async function TutorPage() {
                       }
                       review={review}
                     />
+
+                    {/* Homework */}
+                    <section className="mt-6 border-t border-slate-200 pt-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h4 className="text-base font-semibold text-slate-900">
+                            Homework
+                          </h4>
+
+                          <p className="mt-1 text-sm text-slate-500">
+                            Assign practice for this completed session
+                            and track student completion.
+                          </p>
+                        </div>
+
+                        <span className="text-sm font-medium text-slate-500">
+                          {sessionHomework.length}{" "}
+                          {sessionHomework.length === 1
+                            ? "task"
+                            : "tasks"}
+                        </span>
+                      </div>
+
+                      {sessionHomework.length > 0 ? (
+                        <div className="mt-4 space-y-3">
+                          {sessionHomework.map(
+                            (homeworkItem) => (
+                              <div
+                                key={homeworkItem.id}
+                                className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-start sm:justify-between"
+                              >
+                                <div className="min-w-0">
+                                  <p
+                                    className={`text-sm leading-6 ${
+                                      homeworkItem.completed
+                                        ? "text-slate-500 line-through"
+                                        : "text-slate-800"
+                                    }`}
+                                  >
+                                    {homeworkItem.task}
+                                  </p>
+
+                                  <span
+                                    className={`mt-2 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                      homeworkItem.completed
+                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                        : "bg-amber-50 text-amber-700 border border-amber-100"
+                                    }`}
+                                  >
+                                    {homeworkItem.completed
+                                      ? "Completed by student"
+                                      : "Pending"}
+                                  </span>
+                                </div>
+
+                                <form
+                                  action={
+                                    deleteHomeworkAction
+                                  }
+                                >
+                                  <input
+                                    type="hidden"
+                                    name="homeworkId"
+                                    value={
+                                      homeworkItem.id
+                                    }
+                                  />
+
+                                  <button
+                                    type="submit"
+                                    className="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                                  >
+                                    Delete
+                                  </button>
+                                </form>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                          No homework has been assigned for this
+                          session yet.
+                        </div>
+                      )}
+
+                      {canManageHomework ? (
+                        <form
+                          action={
+                            createHomeworkAction
+                          }
+                          className="mt-4 rounded-lg border border-slate-200 bg-white p-4"
+                        >
+                          <input
+                            type="hidden"
+                            name="sessionId"
+                            value={session.id}
+                          />
+
+                          <label
+                            htmlFor={`homework-${session.id}`}
+                            className="block text-sm font-medium text-slate-700"
+                          >
+                            Add homework task
+                          </label>
+
+                          <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                            <textarea
+                              id={`homework-${session.id}`}
+                              name="task"
+                              required
+                              maxLength={1000}
+                              rows={3}
+                              placeholder="e.g. Complete 10 practice questions on today's topic."
+                              className="min-h-24 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            />
+
+                            <button
+                              type="submit"
+                              className="self-start rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                            >
+                              Add homework
+                            </button>
+                          </div>
+
+                          <p className="mt-2 text-xs text-slate-400">
+                            Up to 1,000 characters.
+                          </p>
+                        </form>
+                      ) : (
+                        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                          Homework can be assigned after the
+                          session is completed or AI-reviewed.
+                        </div>
+                      )}
+                    </section>
                   </div>
                 );
               })}

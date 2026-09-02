@@ -2143,13 +2143,16 @@ export type DeleteHomeworkResult =
     };
 
 /**
- * Tutors may delete homework belonging to their own sessions.
+ * Tutors may delete homework belonging only to their own sessions.
+ *
+ * Authorization is checked with the authenticated Supabase client first.
+ * The actual DELETE uses the service-role client so a missing/overly strict
+ * DELETE RLS policy cannot block an already-authorized tutor operation.
  */
 export async function deleteHomework(
   homeworkId: string
 ): Promise<DeleteHomeworkResult> {
-  const normalizedHomeworkId =
-    homeworkId.trim();
+  const normalizedHomeworkId = homeworkId.trim();
 
   if (!normalizedHomeworkId) {
     return {
@@ -2183,6 +2186,7 @@ export async function deleteHomework(
     };
   }
 
+  // Load the homework record first so we can establish ownership.
   const {
     data: homework,
     error: homeworkLookupError,
@@ -2193,12 +2197,18 @@ export async function deleteHomework(
     .single();
 
   if (homeworkLookupError || !homework) {
+    console.error(
+      "Homework lookup failed:",
+      homeworkLookupError
+    );
+
     return {
       success: false,
       error: "Homework could not be found.",
     };
   }
 
+  // Verify that the linked session belongs to the authenticated tutor.
   const {
     data: session,
     error: sessionError,
@@ -2210,6 +2220,11 @@ export async function deleteHomework(
     .single();
 
   if (sessionError || !session) {
+    console.error(
+      "Homework session authorization failed:",
+      sessionError
+    );
+
     return {
       success: false,
       error:
@@ -2217,6 +2232,7 @@ export async function deleteHomework(
     };
   }
 
+  // Defensive ownership/integrity check.
   if (session.student_id !== homework.student_id) {
     return {
       success: false,
@@ -2225,11 +2241,27 @@ export async function deleteHomework(
     };
   }
 
-  const { error: deleteError } =
-    await supabase
-      .from("homework")
-      .delete()
-      .eq("id", homework.id);
+  // Perform the mutation with the server-only service-role client.
+  const admin = createAdminClient();
+
+  if (!admin) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  const {
+    data: deletedHomework,
+    error: deleteError,
+  } = await admin
+    .from("homework")
+    .delete()
+    .eq("id", homework.id)
+    .eq("session_id", session.id)
+    .eq("student_id", session.student_id)
+    .select("id")
+    .maybeSingle();
 
   if (deleteError) {
     console.error(
@@ -2239,7 +2271,19 @@ export async function deleteHomework(
 
     return {
       success: false,
-      error: "Failed to delete homework.",
+      error: deleteError.message || "Failed to delete homework.",
+    };
+  }
+
+  if (!deletedHomework) {
+    console.error(
+      "Homework deletion affected no rows:",
+      normalizedHomeworkId
+    );
+
+    return {
+      success: false,
+      error: "Homework could not be deleted.",
     };
   }
 
@@ -2264,5 +2308,12 @@ export async function deleteHomeworkAction(
     formData.get("homeworkId") ?? ""
   );
 
-  await deleteHomework(homeworkId);
+  const result = await deleteHomework(homeworkId);
+
+  // Server Actions used by <form action={...}> cannot conveniently return
+  // a value to the current page. Throwing here makes an unexpected failure
+  // visible in development instead of silently appearing successful.
+  if (!result.success) {
+    throw new Error(result.error);
+  }
 }
