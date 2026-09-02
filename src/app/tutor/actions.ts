@@ -1380,3 +1380,889 @@ export async function generateProgressSummaryForStudent(
     progressSummary,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Homework                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export type HomeworkRecord = {
+  id: string;
+  student_id: string;
+  session_id: string;
+  task: string;
+  completed: boolean;
+  created_at: string;
+};
+
+export type CreateHomeworkResult =
+  | {
+      success: true;
+      homeworkId: string;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+/**
+ * Create one homework task for a tutor-owned session.
+ *
+ * The student_id is always derived from the session on the server.
+ * The database trigger also enforces that the session is completed
+ * or already reviewed by AI.
+ */
+export async function createHomework(
+  sessionId: string,
+  task: string
+): Promise<CreateHomeworkResult> {
+  const normalizedSessionId = sessionId.trim();
+  const normalizedTask = task.trim();
+
+  if (!normalizedSessionId) {
+    return {
+      success: false,
+      error: "Session ID is required.",
+    };
+  }
+
+  if (!normalizedTask) {
+    return {
+      success: false,
+      error: "Homework task cannot be empty.",
+    };
+  }
+
+  if (normalizedTask.length > 1000) {
+    return {
+      success: false,
+      error: "Homework task must be 1,000 characters or fewer.",
+    };
+  }
+
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  if (auth.role !== "tutor") {
+    return {
+      success: false,
+      error: "Only tutors can create homework.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  const {
+    data: session,
+    error: sessionError,
+  } = await supabase
+    .from("sessions")
+    .select("id, student_id, status")
+    .eq("id", normalizedSessionId)
+    .eq("tutor_id", auth.userId)
+    .single();
+
+  if (sessionError || !session) {
+    return {
+      success: false,
+      error: "Session could not be found.",
+    };
+  }
+
+  if (
+    session.status !== "completed" &&
+    session.status !== "ai_reviewed"
+  ) {
+    return {
+      success: false,
+      error:
+        "Homework can only be created for completed or AI-reviewed sessions.",
+    };
+  }
+
+  const {
+    data: homework,
+    error: homeworkError,
+  } = await supabase
+    .from("homework")
+    .insert({
+      student_id: session.student_id,
+      session_id: session.id,
+      task: normalizedTask,
+      completed: false,
+    })
+    .select("id")
+    .single();
+
+  if (homeworkError || !homework) {
+    console.error(
+      "Failed to create homework:",
+      homeworkError
+    );
+
+    return {
+      success: false,
+      error:
+        homeworkError?.message ??
+        "Failed to create homework.",
+    };
+  }
+
+  revalidatePath("/tutor");
+  revalidatePath("/student");
+  revalidatePath(
+    `/tutor/student/${session.student_id}`
+  );
+
+  return {
+    success: true,
+    homeworkId: homework.id,
+  };
+}
+
+/**
+ * Form-action wrapper for createHomework().
+ *
+ * This keeps page.tsx free from inline functions passed to <form action={...}>.
+ */
+export async function createHomeworkAction(
+  formData: FormData
+): Promise<void> {
+  const sessionId = String(
+    formData.get("sessionId") ?? ""
+  );
+  const task = String(
+    formData.get("task") ?? ""
+  );
+
+  await createHomework(sessionId, task);
+}
+
+export type CreateHomeworkBatchResult =
+  | {
+      success: true;
+      homeworkIds: string[];
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+/**
+ * Create 2-3 homework tasks for one tutor-owned completed/reviewed session.
+ *
+ * This is intended for AI-generated homework or other batch-created tasks.
+ */
+export async function createHomeworkBatch(
+  sessionId: string,
+  tasks: string[]
+): Promise<CreateHomeworkBatchResult> {
+  const normalizedSessionId = sessionId.trim();
+
+  const normalizedTasks = Array.from(
+    new Set(
+      tasks
+        .filter(
+          (task): task is string =>
+            typeof task === "string"
+        )
+        .map((task) => task.trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (!normalizedSessionId) {
+    return {
+      success: false,
+      error: "Session ID is required.",
+    };
+  }
+
+  if (
+    normalizedTasks.length < 2 ||
+    normalizedTasks.length > 3
+  ) {
+    return {
+      success: false,
+      error: "Homework must contain 2 to 3 tasks.",
+    };
+  }
+
+  if (
+    normalizedTasks.some(
+      (task) => task.length > 1000
+    )
+  ) {
+    return {
+      success: false,
+      error:
+        "Each homework task must be 1,000 characters or fewer.",
+    };
+  }
+
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  if (auth.role !== "tutor") {
+    return {
+      success: false,
+      error: "Only tutors can create homework.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  const {
+    data: session,
+    error: sessionError,
+  } = await supabase
+    .from("sessions")
+    .select("id, student_id, status")
+    .eq("id", normalizedSessionId)
+    .eq("tutor_id", auth.userId)
+    .single();
+
+  if (sessionError || !session) {
+    return {
+      success: false,
+      error: "Session could not be found.",
+    };
+  }
+
+  if (
+    session.status !== "completed" &&
+    session.status !== "ai_reviewed"
+  ) {
+    return {
+      success: false,
+      error:
+        "Homework can only be created for completed or AI-reviewed sessions.",
+    };
+  }
+
+  const {
+    data: existingHomework,
+    error: existingHomeworkError,
+  } = await supabase
+    .from("homework")
+    .select("id")
+    .eq("session_id", session.id);
+
+  if (existingHomeworkError) {
+    console.error(
+      "Failed to check existing homework:",
+      existingHomeworkError
+    );
+
+    return {
+      success: false,
+      error: "Unable to check existing homework.",
+    };
+  }
+
+  /*
+   * Keep the batch operation idempotent. If homework already exists
+   * for this session, return the existing rows instead of duplicating them.
+   */
+  if (
+    existingHomework &&
+    existingHomework.length > 0
+  ) {
+    return {
+      success: true,
+      homeworkIds: existingHomework.map(
+        (item) => item.id
+      ),
+    };
+  }
+
+  const {
+    data: homework,
+    error: homeworkError,
+  } = await supabase
+    .from("homework")
+    .insert(
+      normalizedTasks.map((task) => ({
+        student_id: session.student_id,
+        session_id: session.id,
+        task,
+        completed: false,
+      }))
+    )
+    .select("id");
+
+  if (homeworkError || !homework) {
+    console.error(
+      "Failed to create homework batch:",
+      homeworkError
+    );
+
+    return {
+      success: false,
+      error:
+        homeworkError?.message ??
+        "Failed to create homework.",
+    };
+  }
+
+  revalidatePath("/tutor");
+  revalidatePath("/student");
+  revalidatePath(
+    `/tutor/student/${session.student_id}`
+  );
+
+  return {
+    success: true,
+    homeworkIds: homework.map(
+      (item) => item.id
+    ),
+  };
+}
+
+/**
+ * Form-action wrapper for createHomeworkBatch().
+ */
+export async function createHomeworkBatchAction(
+  formData: FormData
+): Promise<void> {
+  const sessionId = String(
+    formData.get("sessionId") ?? ""
+  );
+
+  const tasks = formData
+    .getAll("task")
+    .map((value) => String(value));
+
+  await createHomeworkBatch(sessionId, tasks);
+}
+
+export type GetHomeworkForSessionResult =
+  | {
+      success: true;
+      homework: HomeworkRecord[];
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+/**
+ * Load homework for a session.
+ *
+ * Tutors can load homework for their own sessions.
+ * Students can load homework for their own student record.
+ */
+export async function getHomeworkForSession(
+  sessionId: string
+): Promise<GetHomeworkForSessionResult> {
+  const normalizedSessionId = sessionId.trim();
+
+  if (!normalizedSessionId) {
+    return {
+      success: false,
+      error: "Session ID is required.",
+    };
+  }
+
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  if (auth.role === "tutor") {
+    const {
+      data: session,
+      error: sessionError,
+    } = await supabase
+      .from("sessions")
+      .select("id")
+      .eq("id", normalizedSessionId)
+      .eq("tutor_id", auth.userId)
+      .single();
+
+    if (sessionError || !session) {
+      return {
+        success: false,
+        error: "Session could not be found.",
+      };
+    }
+
+    const {
+      data: homework,
+      error: homeworkError,
+    } = await supabase
+      .from("homework")
+      .select(
+        "id, student_id, session_id, task, completed, created_at"
+      )
+      .eq("session_id", session.id)
+      .order("created_at", {
+        ascending: true,
+      });
+
+    if (homeworkError) {
+      console.error(
+        "Failed to load homework:",
+        homeworkError
+      );
+
+      return {
+        success: false,
+        error: "Failed to load homework.",
+      };
+    }
+
+    return {
+      success: true,
+      homework:
+        (homework ?? []) as HomeworkRecord[],
+    };
+  }
+
+  if (auth.role === "student") {
+    const {
+      data: student,
+      error: studentError,
+    } = await supabase
+      .from("students")
+      .select("id")
+      .eq("profile_id", auth.userId)
+      .single();
+
+    if (studentError || !student) {
+      return {
+        success: false,
+        error: "Student profile could not be found.",
+      };
+    }
+
+    const {
+      data: homework,
+      error: homeworkError,
+    } = await supabase
+      .from("homework")
+      .select(
+        "id, student_id, session_id, task, completed, created_at"
+      )
+      .eq("session_id", normalizedSessionId)
+      .eq("student_id", student.id)
+      .order("created_at", {
+        ascending: true,
+      });
+
+    if (homeworkError) {
+      console.error(
+        "Failed to load homework:",
+        homeworkError
+      );
+
+      return {
+        success: false,
+        error: "Failed to load homework.",
+      };
+    }
+
+    return {
+      success: true,
+      homework:
+        (homework ?? []) as HomeworkRecord[],
+    };
+  }
+
+  return {
+    success: false,
+    error: "You are not authorized to view homework.",
+  };
+}
+
+export type GetCurrentStudentHomeworkResult =
+  | {
+      success: true;
+      homework: HomeworkRecord[];
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+/**
+ * Load all homework for the currently signed-in student.
+ */
+export async function getCurrentStudentHomework(): Promise<GetCurrentStudentHomeworkResult> {
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  if (auth.role !== "student") {
+    return {
+      success: false,
+      error: "Only students can access their homework here.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  const {
+    data: student,
+    error: studentError,
+  } = await supabase
+    .from("students")
+    .select("id")
+    .eq("profile_id", auth.userId)
+    .single();
+
+  if (studentError || !student) {
+    return {
+      success: false,
+      error: "Student profile could not be found.",
+    };
+  }
+
+  const {
+    data: homework,
+    error: homeworkError,
+  } = await supabase
+    .from("homework")
+    .select(
+      "id, student_id, session_id, task, completed, created_at"
+    )
+    .eq("student_id", student.id)
+    .order("created_at", {
+      ascending: false,
+    });
+
+  if (homeworkError) {
+    console.error(
+      "Failed to load student homework:",
+      homeworkError
+    );
+
+    return {
+      success: false,
+      error: "Failed to load homework.",
+    };
+  }
+
+  return {
+    success: true,
+    homework:
+      (homework ?? []) as HomeworkRecord[],
+  };
+}
+
+export type UpdateHomeworkCompletionResult =
+  | {
+      success: true;
+      completed: boolean;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+/**
+ * Students may change only the completed state.
+ *
+ * The database trigger protects student_id, session_id, task, and created_at
+ * independently, so this action intentionally sends only { completed }.
+ */
+export async function updateHomeworkCompletion(
+  homeworkId: string,
+  completed: boolean
+): Promise<UpdateHomeworkCompletionResult> {
+  const normalizedHomeworkId =
+    homeworkId.trim();
+
+  if (!normalizedHomeworkId) {
+    return {
+      success: false,
+      error: "Homework ID is required.",
+    };
+  }
+
+  if (typeof completed !== "boolean") {
+    return {
+      success: false,
+      error: "Invalid completion value.",
+    };
+  }
+
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  if (auth.role !== "student") {
+    return {
+      success: false,
+      error:
+        "Only students can update homework completion.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  const {
+    data: student,
+    error: studentError,
+  } = await supabase
+    .from("students")
+    .select("id")
+    .eq("profile_id", auth.userId)
+    .single();
+
+  if (studentError || !student) {
+    return {
+      success: false,
+      error: "Student profile could not be found.",
+    };
+  }
+
+  const {
+    data: homework,
+    error: homeworkError,
+  } = await supabase
+    .from("homework")
+    .update({
+      completed,
+    })
+    .eq("id", normalizedHomeworkId)
+    .eq("student_id", student.id)
+    .select("completed")
+    .single();
+
+  if (homeworkError || !homework) {
+    console.error(
+      "Failed to update homework completion:",
+      homeworkError
+    );
+
+    return {
+      success: false,
+      error: "Homework could not be updated.",
+    };
+  }
+
+  revalidatePath("/student");
+  revalidatePath("/tutor");
+
+  return {
+    success: true,
+    completed: homework.completed,
+  };
+}
+
+/**
+ * Form-action wrapper for updateHomeworkCompletion().
+ */
+export async function updateHomeworkCompletionAction(
+  formData: FormData
+): Promise<void> {
+  const homeworkId = String(
+    formData.get("homeworkId") ?? ""
+  );
+
+  const completedValue = String(
+    formData.get("completed") ?? ""
+  ).toLowerCase();
+
+  await updateHomeworkCompletion(
+    homeworkId,
+    completedValue === "true"
+  );
+}
+
+export type DeleteHomeworkResult =
+  | {
+      success: true;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+/**
+ * Tutors may delete homework belonging to their own sessions.
+ */
+export async function deleteHomework(
+  homeworkId: string
+): Promise<DeleteHomeworkResult> {
+  const normalizedHomeworkId =
+    homeworkId.trim();
+
+  if (!normalizedHomeworkId) {
+    return {
+      success: false,
+      error: "Homework ID is required.",
+    };
+  }
+
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  if (auth.role !== "tutor") {
+    return {
+      success: false,
+      error: "Only tutors can delete homework.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  const {
+    data: homework,
+    error: homeworkLookupError,
+  } = await supabase
+    .from("homework")
+    .select("id, session_id, student_id")
+    .eq("id", normalizedHomeworkId)
+    .single();
+
+  if (homeworkLookupError || !homework) {
+    return {
+      success: false,
+      error: "Homework could not be found.",
+    };
+  }
+
+  const {
+    data: session,
+    error: sessionError,
+  } = await supabase
+    .from("sessions")
+    .select("id, student_id")
+    .eq("id", homework.session_id)
+    .eq("tutor_id", auth.userId)
+    .single();
+
+  if (sessionError || !session) {
+    return {
+      success: false,
+      error:
+        "You are not authorized to delete this homework.",
+    };
+  }
+
+  if (session.student_id !== homework.student_id) {
+    return {
+      success: false,
+      error:
+        "Homework is not linked to the selected student.",
+    };
+  }
+
+  const { error: deleteError } =
+    await supabase
+      .from("homework")
+      .delete()
+      .eq("id", homework.id);
+
+  if (deleteError) {
+    console.error(
+      "Failed to delete homework:",
+      deleteError
+    );
+
+    return {
+      success: false,
+      error: "Failed to delete homework.",
+    };
+  }
+
+  revalidatePath("/tutor");
+  revalidatePath("/student");
+  revalidatePath(
+    `/tutor/student/${session.student_id}`
+  );
+
+  return {
+    success: true,
+  };
+}
+
+/**
+ * Form-action wrapper for deleteHomework().
+ */
+export async function deleteHomeworkAction(
+  formData: FormData
+): Promise<void> {
+  const homeworkId = String(
+    formData.get("homeworkId") ?? ""
+  );
+
+  await deleteHomework(homeworkId);
+}
