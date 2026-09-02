@@ -343,7 +343,10 @@ export default async function TutorPage() {
     }
   }
 
-  const homeworkBySessionId = new Map<string, HomeworkRecord[]>();
+  const homeworkBySessionId = new Map<
+    string,
+    HomeworkRecord[]
+  >();
 
   for (const homeworkItem of homework) {
     const items =
@@ -409,8 +412,8 @@ export default async function TutorPage() {
         />
 
         {/* Sessions */}
-        <section className="mb-8 bg-white border border-slate-200 rounded-xl shadow-xs">
-          <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+        <section className="mb-10">
+          <div className="pb-4 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
                 Sessions
@@ -430,7 +433,7 @@ export default async function TutorPage() {
           </div>
 
           {sessionsError ? (
-            <div className="p-6">
+            <div className="py-6">
               <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
                 Failed to load sessions. Please try again.
               </div>
@@ -492,7 +495,7 @@ export default async function TutorPage() {
                 return (
                   <div
                     key={session.id}
-                    className="px-6 py-5 hover:bg-slate-50 transition"
+                    className="py-6 hover:bg-slate-50/60 transition"
                   >
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
@@ -729,7 +732,7 @@ export default async function TutorPage() {
               })}
             </div>
           ) : (
-            <div className="p-10 text-center">
+            <div className="py-10 text-center">
               <h3 className="text-base font-semibold text-slate-900">
                 No sessions yet
               </h3>
@@ -742,8 +745,8 @@ export default async function TutorPage() {
         </section>
 
         {/* Students */}
-        <section className="bg-white border border-slate-200 rounded-xl shadow-xs">
-          <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
+        <section className="mt-10 border-t border-slate-200 pt-8">
+          <div className="pb-4 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
                 Students
@@ -763,7 +766,7 @@ export default async function TutorPage() {
           </div>
 
           {studentsError ? (
-            <div className="p-6">
+            <div className="py-6">
               <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
                 Failed to load students. Please try again.
               </div>
@@ -774,7 +777,7 @@ export default async function TutorPage() {
               {students.map((student) => (
                 <div
                   key={student.id}
-                  className="px-6 py-5 hover:bg-slate-50 transition"
+                  className="py-6 hover:bg-slate-50/60 transition"
                 >
                   <div className="flex items-start justify-between gap-6">
                     <div className="min-w-0">
@@ -817,7 +820,7 @@ export default async function TutorPage() {
               ))}
             </div>
           ) : (
-            <div className="p-10 text-center">
+            <div className="py-10 text-center">
               <h3 className="text-base font-semibold text-slate-900">
                 No students yet
               </h3>
