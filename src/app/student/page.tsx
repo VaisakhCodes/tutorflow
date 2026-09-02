@@ -1,4 +1,5 @@
 import { createClient, getAuthRole } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 type StudentRecord = {
@@ -23,10 +24,13 @@ type SessionNoteRecord = {
   notes: string;
 };
 
-type AIReviewRecord = {
+type HomeworkRecord = {
+  id: string;
   session_id: string;
-  summary: string;
-  next_session_suggestion: string;
+  student_id: string;
+  task: string;
+  completed: boolean;
+  created_at: string;
 };
 
 function formatSessionDate(value: string): string {
@@ -40,12 +44,32 @@ function getStatusClasses(status: string): string {
   switch (status.toLowerCase()) {
     case "scheduled":
       return "bg-amber-50 text-amber-700 border-amber-100";
+
+    case "in_progress":
+      return "bg-blue-50 text-blue-700 border-blue-100";
+
     case "completed":
+    case "ai_reviewed":
       return "bg-emerald-50 text-emerald-700 border-emerald-100";
+
     case "cancelled":
       return "bg-red-50 text-red-700 border-red-100";
+
     default:
       return "bg-slate-100 text-slate-700 border-slate-200";
+  }
+}
+
+function getDisplayStatus(status: string): string {
+  switch (status.toLowerCase()) {
+    case "in_progress":
+      return "In progress";
+
+    case "ai_reviewed":
+      return "Completed";
+
+    default:
+      return status;
   }
 }
 
@@ -65,6 +89,66 @@ export default async function StudentPage() {
     redirect("/login");
   }
 
+  /*
+   * Student homework completion is handled by a server action.
+   *
+   * The action derives the student from the authenticated user instead
+   * of trusting a student_id sent by the browser.
+   */
+  async function toggleHomeworkAction(formData: FormData) {
+    "use server";
+
+    const homeworkId = String(formData.get("homeworkId") ?? "");
+    const completedValue = String(formData.get("completed") ?? "");
+
+    if (!homeworkId) {
+      return;
+    }
+
+    const completed = completedValue === "true";
+
+    const actionAuth = await getAuthRole();
+
+    if (!actionAuth || actionAuth.role !== "student") {
+      return;
+    }
+
+    const actionSupabase = await createClient();
+
+    if (!actionSupabase) {
+      return;
+    }
+
+    const { data: actionStudent, error: actionStudentError } =
+      await actionSupabase
+        .from("students")
+        .select("id")
+        .eq("profile_id", actionAuth.userId)
+        .single<{ id: string }>();
+
+    if (actionStudentError || !actionStudent) {
+      return;
+    }
+
+    /*
+     * Scope the update to the authenticated student's own homework.
+     * The browser cannot use this action to modify another student's task.
+     */
+    const { error: updateError } = await actionSupabase
+      .from("homework")
+      .update({
+        completed,
+      })
+      .eq("id", homeworkId)
+      .eq("student_id", actionStudent.id);
+
+    if (updateError) {
+      return;
+    }
+
+    revalidatePath("/student");
+  }
+
   const supabase = await createClient();
 
   if (!supabase) {
@@ -74,6 +158,7 @@ export default async function StudentPage() {
           <h1 className="text-lg font-semibold text-red-700">
             Supabase is not configured
           </h1>
+
           <p className="mt-2 text-sm text-slate-600">
             Please check the environment configuration.
           </p>
@@ -83,8 +168,7 @@ export default async function StudentPage() {
   }
 
   /*
-   * The student's application record is linked to the authenticated
-   * Supabase user through students.profile_id.
+   * students.profile_id is linked to the authenticated Supabase user.
    */
   const { data: student, error: studentError } = await supabase
     .from("students")
@@ -101,6 +185,7 @@ export default async function StudentPage() {
           <h1 className="text-lg font-semibold text-red-700">
             Student profile not found
           </h1>
+
           <p className="mt-2 text-sm text-slate-600">
             Your student profile could not be loaded. Please contact your
             tutor.
@@ -118,64 +203,62 @@ export default async function StudentPage() {
     .returns<SessionRecord[]>();
 
   const sessionRecords = sessions ?? [];
+
   const sessionIds = sessionRecords.map((session) => session.id);
 
   let notes: SessionNoteRecord[] = [];
-  let reviews: AIReviewRecord[] = [];
+  let homework: HomeworkRecord[] = [];
 
   if (sessionIds.length > 0) {
-    const [{ data: notesData }, { data: reviewsData }] = await Promise.all([
-      supabase
-        .from("session_notes")
-        .select("session_id, notes")
-        .in("session_id", sessionIds)
-        .returns<SessionNoteRecord[]>(),
+    const [{ data: notesData }, { data: homeworkData }] =
+      await Promise.all([
+        supabase
+          .from("session_notes")
+          .select("session_id, notes")
+          .in("session_id", sessionIds)
+          .returns<SessionNoteRecord[]>(),
 
-      supabase
-        .from("ai_reviews")
-        .select(
-          "session_id, summary, next_session_suggestion"
-        )
-        .in("session_id", sessionIds)
-        .order("created_at", { ascending: false })
-        .returns<AIReviewRecord[]>(),
-    ]);
+        supabase
+          .from("homework")
+          .select(
+            "id, session_id, student_id, task, completed, created_at"
+          )
+          .eq("student_id", student.id)
+          .in("session_id", sessionIds)
+          .order("created_at", { ascending: false })
+          .returns<HomeworkRecord[]>(),
+      ]);
 
     notes = notesData ?? [];
-    reviews = reviewsData ?? [];
+    homework = homeworkData ?? [];
   }
 
   const upcomingSessions = sessionRecords
-    .filter((session) => {
-      const status = session.status.toLowerCase();
-
-      return status === "scheduled";
-    })
+    .filter((session) => session.status.toLowerCase() === "scheduled")
     .slice(0, 5);
 
-  const recentSessions = sessionRecords
+  const completedSessions = sessionRecords
     .filter((session) => {
       const status = session.status.toLowerCase();
 
-      return status !== "scheduled" && status !== "cancelled";
+      return status === "completed" || status === "ai_reviewed";
     })
-    .sort(
-      (a, b) =>
-        b.scheduled_at.localeCompare(a.scheduled_at)
-    )
+    .sort((a, b) => {
+      return b.scheduled_at.localeCompare(a.scheduled_at);
+    })
     .slice(0, 5);
 
   const notesBySessionId = new Map(
     notes.map((note) => [note.session_id, note])
   );
 
-  const reviewBySessionId = new Map<string, AIReviewRecord>();
+  const sessionById = new Map(
+    sessionRecords.map((session) => [session.id, session])
+  );
 
-  for (const review of reviews) {
-    if (!reviewBySessionId.has(review.session_id)) {
-      reviewBySessionId.set(review.session_id, review);
-    }
-  }
+  const completedHomeworkCount = homework.filter(
+    (item) => item.completed
+  ).length;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -218,11 +301,13 @@ export default async function StudentPage() {
           </div>
         )}
 
+        {/* Learning Profile */}
         <section className="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
           <div className="border-b border-slate-200 px-6 py-5">
             <h2 className="text-lg font-semibold text-slate-900">
               My Learning Profile
             </h2>
+
             <p className="mt-1 text-sm text-slate-500">
               Your current learning profile and goals.
             </p>
@@ -233,6 +318,7 @@ export default async function StudentPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 Subject
               </p>
+
               <p className="mt-1 text-sm font-medium text-slate-900">
                 {student.subject}
               </p>
@@ -242,6 +328,7 @@ export default async function StudentPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 Current level
               </p>
+
               <p className="mt-1 text-sm font-medium text-slate-900">
                 {student.current_level}
               </p>
@@ -251,6 +338,7 @@ export default async function StudentPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 Learning goals
               </p>
+
               <p className="mt-1 text-sm leading-6 text-slate-700">
                 {student.learning_goals}
               </p>
@@ -260,6 +348,7 @@ export default async function StudentPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                 Areas to improve
               </p>
+
               <p className="mt-1 text-sm leading-6 text-slate-700">
                 {student.weak_areas}
               </p>
@@ -267,12 +356,14 @@ export default async function StudentPage() {
           </div>
         </section>
 
+        {/* Upcoming Sessions */}
         <section className="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
                 Upcoming Sessions
               </h2>
+
               <p className="mt-1 text-sm text-slate-500">
                 Your next scheduled tutoring sessions.
               </p>
@@ -307,7 +398,7 @@ export default async function StudentPage() {
                         session.status
                       )}`}
                     >
-                      {session.status}
+                      {getDisplayStatus(session.status)}
                     </span>
                   </div>
                 </div>
@@ -318,6 +409,7 @@ export default async function StudentPage() {
               <h3 className="text-base font-semibold text-slate-900">
                 No upcoming sessions
               </h3>
+
               <p className="mt-2 text-sm text-slate-500">
                 Your next tutoring session will appear here once it is
                 scheduled.
@@ -326,28 +418,29 @@ export default async function StudentPage() {
           )}
         </section>
 
-        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+        {/* Completed Session Notes */}
+        <section className="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
                 Recent Sessions
               </h2>
+
               <p className="mt-1 text-sm text-slate-500">
-                Your most recent tutoring activity and feedback.
+                Notes from your completed tutoring sessions.
               </p>
             </div>
 
             <span className="text-sm font-medium text-slate-500">
-              {recentSessions.length}{" "}
-              {recentSessions.length === 1 ? "session" : "sessions"}
+              {completedSessions.length}{" "}
+              {completedSessions.length === 1 ? "session" : "sessions"}
             </span>
           </div>
 
-          {recentSessions.length > 0 ? (
+          {completedSessions.length > 0 ? (
             <div className="divide-y divide-slate-200">
-              {recentSessions.map((session) => {
+              {completedSessions.map((session) => {
                 const note = notesBySessionId.get(session.id);
-                const review = reviewBySessionId.get(session.id);
 
                 return (
                   <article
@@ -370,57 +463,25 @@ export default async function StudentPage() {
                           session.status
                         )}`}
                       >
-                        {session.status}
+                        Completed
                       </span>
                     </div>
 
-                    {note?.notes && (
-                      <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                          Session notes
-                        </p>
+                    <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                        Session notes
+                      </p>
 
+                      {note?.notes ? (
                         <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                           {note.notes}
                         </p>
-                      </div>
-                    )}
-
-                    {review && (
-                      <div className="mt-4 rounded-lg border border-violet-100 bg-violet-50/40 p-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <p className="text-sm font-semibold text-violet-900">
-                            AI Session Review
-                          </p>
-
-                          <span className="rounded-full border border-violet-100 bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
-                            AI Ready
-                          </span>
-                        </div>
-
-                        <div className="mt-4">
-                          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                            Summary
-                          </p>
-
-                          <p className="mt-1 text-sm leading-6 text-slate-700">
-                            {review.summary}
-                          </p>
-                        </div>
-
-                        {review.next_session_suggestion && (
-                          <div className="mt-4 border-t border-violet-100 pt-4">
-                            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                              Next learning step
-                            </p>
-
-                            <p className="mt-1 text-sm leading-6 text-slate-700">
-                              {review.next_session_suggestion}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      ) : (
+                        <p className="mt-2 text-sm text-slate-500">
+                          No session notes were recorded.
+                        </p>
+                      )}
+                    </div>
                   </article>
                 );
               })}
@@ -430,8 +491,102 @@ export default async function StudentPage() {
               <h3 className="text-base font-semibold text-slate-900">
                 No previous sessions
               </h3>
+
               <p className="mt-2 text-sm text-slate-500">
-                Your completed tutoring sessions will appear here.
+                Notes from completed tutoring sessions will appear here.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* Homework */}
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Homework
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Homework assigned by your tutor.
+              </p>
+            </div>
+
+            <span className="text-sm font-medium text-slate-500">
+              {completedHomeworkCount}/{homework.length} completed
+            </span>
+          </div>
+
+          {homework.length > 0 ? (
+            <div className="divide-y divide-slate-200">
+              {homework.map((item) => {
+                const session = sessionById.get(item.session_id);
+
+                return (
+                  <article
+                    key={item.id}
+                    className="px-6 py-6"
+                  >
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex-1">
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                          {item.task}
+                        </p>
+
+                        {session && (
+                          <p className="mt-3 text-xs text-slate-400">
+                            Session: {session.topic}
+                          </p>
+                        )}
+
+                        <div className="mt-3">
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                              item.completed
+                                ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+                                : "border-amber-100 bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            {item.completed ? "Completed" : "Pending"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <form action={toggleHomeworkAction}>
+                        <input
+                          type="hidden"
+                          name="homeworkId"
+                          value={item.id}
+                        />
+
+                        <input
+                          type="hidden"
+                          name="completed"
+                          value={String(!item.completed)}
+                        />
+
+                        <button
+                          type="submit"
+                          className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
+                          {item.completed
+                            ? "Mark as pending"
+                            : "Mark as completed"}
+                        </button>
+                      </form>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="px-6 py-10 text-center">
+              <h3 className="text-base font-semibold text-slate-900">
+                No homework assigned
+              </h3>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Homework assigned by your tutor will appear here.
               </p>
             </div>
           )}
