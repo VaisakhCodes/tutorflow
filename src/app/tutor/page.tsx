@@ -710,7 +710,7 @@ export default async function TutorPage() {
 
                             <button
                               type="submit"
-                              className="self-start rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                              className="self-start rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
                             >
                               Add homework
                             </button>

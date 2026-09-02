@@ -47,7 +47,7 @@ export default function SessionAIPlan({
             type="button"
             onClick={handleGenerate}
             disabled={isPending}
-            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? "Generating AI Plan..." : "Generate AI Plan"}
           </button>
