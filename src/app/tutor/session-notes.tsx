@@ -58,7 +58,7 @@ export default function SessionNotes({
         maxLength={10000}
         placeholder="Write notes about this tutoring session..."
         disabled={isPending}
-        className="w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+        className="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
       />
 
       <div className="mt-2 flex items-center justify-between gap-4">
@@ -70,7 +70,7 @@ export default function SessionNotes({
           type="button"
           onClick={handleSave}
           disabled={isPending || !notes.trim()}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {isPending ? "Saving..." : "Save notes"}
         </button>
@@ -78,7 +78,7 @@ export default function SessionNotes({
 
       {message && (
         <div
-          className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
+          className={`mt-3 rounded-md border px-3 py-2 text-sm ${
             isError
               ? "border-red-200 bg-red-50 text-red-700"
               : "border-emerald-200 bg-emerald-50 text-emerald-700"
