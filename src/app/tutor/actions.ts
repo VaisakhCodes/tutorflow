@@ -7,8 +7,10 @@ import {
 } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  generateProgressSummary,
   generateSessionPlan,
   generateSessionReview,
+  type ProgressSummary,
   type SessionPlan,
 } from "@/lib/ai/gemini";
 
@@ -966,5 +968,216 @@ export async function generateSessionReviewForSession(
   return {
     success: true,
     reviewId: aiReview.id,
+  };
+}
+
+export type GenerateProgressSummaryResult =
+  | {
+      success: true;
+      progressSummary: ProgressSummary;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+/**
+ * Generate a progress summary for a tutor-owned student
+ * using the student's past AI session reviews.
+ */
+export async function generateProgressSummaryForStudent(
+  studentId: string
+): Promise<GenerateProgressSummaryResult> {
+  const normalizedStudentId = studentId.trim();
+
+  if (!normalizedStudentId) {
+    return {
+      success: false,
+      error: "Student ID is required.",
+    };
+  }
+
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  if (auth.role !== "tutor") {
+    return {
+      success: false,
+      error:
+        "Only tutors can generate progress summaries.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  // Verify that the student belongs to the authenticated tutor.
+  const {
+    data: student,
+    error: studentError,
+  } = await supabase
+    .from("students")
+    .select(
+      "id, name, subject, current_level, learning_goals, weak_areas"
+    )
+    .eq("id", normalizedStudentId)
+    .eq("tutor_id", auth.userId)
+    .single();
+
+  if (studentError || !student) {
+    return {
+      success: false,
+      error: "Student could not be found.",
+    };
+  }
+
+  // Load this student's sessions.
+  const {
+    data: sessions,
+    error: sessionsError,
+  } = await supabase
+    .from("sessions")
+    .select(
+      "id, scheduled_at, topic, status"
+    )
+    .eq("student_id", student.id)
+    .eq("tutor_id", auth.userId)
+    .order("scheduled_at", {
+      ascending: true,
+    })
+    .limit(20);
+
+  if (sessionsError) {
+    console.error(
+      "Failed to load student sessions for progress summary:",
+      sessionsError
+    );
+
+    return {
+      success: false,
+      error:
+        "Unable to load the student's session history.",
+    };
+  }
+
+  const sessionRecords = sessions ?? [];
+
+  if (sessionRecords.length === 0) {
+    return {
+      success: false,
+      error:
+        "No sessions are available for this student yet.",
+    };
+  }
+
+  const sessionIds = sessionRecords.map(
+    (session) => session.id
+  );
+
+  // Load the AI reviews belonging to these sessions.
+  const {
+    data: reviews,
+    error: reviewsError,
+  } = await supabase
+    .from("ai_reviews")
+    .select(
+      "session_id, summary, next_session_suggestion"
+    )
+    .in("session_id", sessionIds);
+
+  if (reviewsError) {
+    console.error(
+      "Failed to load AI session reviews for progress summary:",
+      reviewsError
+    );
+
+    return {
+      success: false,
+      error:
+        "Unable to load the student's AI session reviews.",
+    };
+  }
+
+  const reviewBySessionId = new Map(
+    (reviews ?? []).map((review) => [
+      review.session_id,
+      review,
+    ])
+  );
+
+  const reviewedSessions = sessionRecords
+    .map((session) => {
+      const review = reviewBySessionId.get(
+        session.id
+      );
+
+      return {
+        scheduled_at: session.scheduled_at,
+        topic: session.topic,
+        status: session.status,
+        reviewSummary: review?.summary ?? null,
+        nextSessionSuggestion:
+          review?.next_session_suggestion ?? null,
+      };
+    })
+    .filter(
+      (session) =>
+        typeof session.reviewSummary === "string" &&
+        session.reviewSummary.trim().length > 0
+    );
+
+  if (reviewedSessions.length === 0) {
+    return {
+      success: false,
+      error:
+        "Generate at least one AI session review before creating a progress summary.",
+    };
+  }
+
+  let progressSummary: ProgressSummary;
+
+  try {
+    progressSummary = await generateProgressSummary({
+      studentName: student.name,
+      subject: student.subject,
+      currentLevel: student.current_level,
+      learningGoals: student.learning_goals,
+      weakAreas: student.weak_areas,
+      sessions: reviewedSessions,
+    });
+  } catch (error) {
+    console.error(
+      "AI progress-summary generation failed:",
+      error
+    );
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to generate the AI progress summary.",
+    };
+  }
+
+  revalidatePath(
+    `/tutor/student/${student.id}`
+  );
+
+  return {
+    success: true,
+    progressSummary,
   };
 }

@@ -17,6 +17,12 @@ export type SessionReview = {
   next_session_suggestion: string;
 };
 
+export type ProgressSummary = {
+  summary: string;
+  improving_areas: string[];
+  struggling_areas: string[];
+};
+
 const SESSION_PLAN_SCHEMA = {
   type: "object",
   properties: {
@@ -59,6 +65,34 @@ const SESSION_REVIEW_SCHEMA = {
   required: [
     "summary",
     "next_session_suggestion",
+  ],
+};
+
+const PROGRESS_SUMMARY_SCHEMA = {
+  type: "object",
+  properties: {
+    summary: {
+      type: "string",
+    },
+    improving_areas: {
+      type: "array",
+      maxItems: 3,
+      items: {
+        type: "string",
+      },
+    },
+    struggling_areas: {
+      type: "array",
+      maxItems: 3,
+      items: {
+        type: "string",
+      },
+    },
+  },
+  required: [
+    "summary",
+    "improving_areas",
+    "struggling_areas",
   ],
 };
 
@@ -432,4 +466,129 @@ REQUIREMENTS
   }
 
   return review;
+}
+
+export async function generateProgressSummary(params: {
+  studentName: string;
+  subject: string;
+  currentLevel: string;
+  learningGoals: string;
+  weakAreas: string;
+  sessions: Array<{
+    scheduled_at: string;
+    topic: string;
+    status: string;
+    reviewSummary?: string | null;
+    nextSessionSuggestion?: string | null;
+  }>;
+}): Promise<ProgressSummary> {
+  const ai = getGeminiClient();
+
+  if (!ai) {
+    throw new Error("Gemini API key is not configured.");
+  }
+
+  const reviewedSessions = params.sessions.filter(
+    (session) =>
+      typeof session.reviewSummary === "string" &&
+      session.reviewSummary.trim().length > 0
+  );
+
+  const sessionHistory =
+    reviewedSessions.length > 0
+      ? reviewedSessions
+          .map(
+            (session) => `
+- Date: ${session.scheduled_at}
+- Topic: ${session.topic}
+- Status: ${session.status}
+- Session review summary: ${session.reviewSummary}
+- Next-session suggestion: ${
+              session.nextSessionSuggestion?.trim() ||
+              "No suggestion available."
+            }
+`
+          )
+          .join("\n")
+      : "No previous AI session reviews are available.";
+
+  const prompt = `
+You are an expert private tutor analyzing a student's learning progress over time.
+
+Use the student's profile and the available AI session reviews to produce a concise progress assessment.
+
+STUDENT PROFILE
+Name: ${params.studentName}
+Subject: ${params.subject}
+Current level: ${params.currentLevel}
+Learning goals: ${params.learningGoals}
+Known weak areas: ${params.weakAreas}
+
+PAST AI SESSION REVIEWS
+${sessionHistory}
+
+REQUIREMENTS
+1. Write one concise overall progress summary.
+2. Identify up to 3 areas where the student is improving, but include only improvements that are supported by the available evidence.
+3. Identify up to 3 areas where the student is still struggling, but include only challenges that are supported by the available evidence.
+4. Do not invent progress, strengths, weaknesses, achievements, scores, or behaviors.
+5. If there is not enough evidence to identify 3 improving areas, return fewer than 3 improving areas.
+6. If there is not enough evidence to identify 3 struggling areas, return fewer than 3 struggling areas.
+7. Clearly acknowledge limited evidence in the overall summary when only a small number of reviewed sessions are available.
+8. Use the student's learning goals and known weak areas as context, but do not treat them as proof of current progress or struggle unless the session reviews support that conclusion.
+9. Base every conclusion only on the supplied student profile and AI session reviews.
+10. Keep each improving or struggling area concise and specific.
+11. Return only the requested structured JSON data.
+`;
+
+  const response = await generateWithFallback(
+    ai,
+    prompt,
+    PROGRESS_SUMMARY_SCHEMA
+  );
+
+  if (!response.text) {
+    throw new Error("Gemini returned an empty response.");
+  }
+
+  const parsed = parseJsonResponse(response.text);
+
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    !("summary" in parsed) ||
+    !("improving_areas" in parsed) ||
+    !("struggling_areas" in parsed)
+  ) {
+    throw new Error(
+      "Gemini returned an invalid progress summary."
+    );
+  }
+
+  const progressSummary = parsed as ProgressSummary;
+
+  if (
+    typeof progressSummary.summary !== "string" ||
+    progressSummary.summary.trim().length === 0 ||
+    !Array.isArray(progressSummary.improving_areas) ||
+    progressSummary.improving_areas.length > 3 ||
+    !progressSummary.improving_areas.every(
+      (item) =>
+        typeof item === "string" &&
+        item.trim().length > 0
+    ) ||
+    !Array.isArray(progressSummary.struggling_areas) ||
+    progressSummary.struggling_areas.length > 3 ||
+    !progressSummary.struggling_areas.every(
+      (item) =>
+        typeof item === "string" &&
+        item.trim().length > 0
+    )
+  ) {
+    throw new Error(
+      "Gemini returned an incorrectly structured progress summary."
+    );
+  }
+
+  return progressSummary;
 }
