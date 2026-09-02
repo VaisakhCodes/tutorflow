@@ -12,6 +12,11 @@ export type SessionPlan = {
   practice_questions: string[];
 };
 
+export type SessionReview = {
+  summary: string;
+  next_session_suggestion: string;
+};
+
 const SESSION_PLAN_SCHEMA = {
   type: "object",
   properties: {
@@ -38,6 +43,22 @@ const SESSION_PLAN_SCHEMA = {
     "objectives",
     "lesson_outline",
     "practice_questions",
+  ],
+};
+
+const SESSION_REVIEW_SCHEMA = {
+  type: "object",
+  properties: {
+    summary: {
+      type: "string",
+    },
+    next_session_suggestion: {
+      type: "string",
+    },
+  },
+  required: [
+    "summary",
+    "next_session_suggestion",
   ],
 };
 
@@ -101,7 +122,8 @@ async function sleep(ms: number): Promise<void> {
 async function generateWithRetry(
   ai: GoogleGenAI,
   model: string,
-  prompt: string
+  prompt: string,
+  responseJsonSchema: Record<string, unknown>
 ) {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
     try {
@@ -110,7 +132,7 @@ async function generateWithRetry(
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          responseJsonSchema: SESSION_PLAN_SCHEMA,
+          responseJsonSchema,
         },
       });
     } catch (error) {
@@ -126,6 +148,54 @@ async function generateWithRetry(
   }
 
   throw new Error(`Gemini request failed for model ${model}.`);
+}
+
+async function generateWithFallback(
+  ai: GoogleGenAI,
+  prompt: string,
+  responseJsonSchema: Record<string, unknown>
+) {
+  try {
+    return await generateWithRetry(
+      ai,
+      PRIMARY_GEMINI_MODEL,
+      prompt,
+      responseJsonSchema
+    );
+  } catch (primaryError) {
+    if (!isRetryableError(primaryError)) {
+      throw primaryError;
+    }
+
+    try {
+      return await generateWithRetry(
+        ai,
+        FALLBACK_GEMINI_MODEL,
+        prompt,
+        responseJsonSchema
+      );
+    } catch (fallbackError) {
+      console.error(
+        `Primary Gemini model "${PRIMARY_GEMINI_MODEL}" failed:`,
+        primaryError
+      );
+
+      console.error(
+        `Fallback Gemini model "${FALLBACK_GEMINI_MODEL}" failed:`,
+        fallbackError
+      );
+
+      throw fallbackError;
+    }
+  }
+}
+
+function parseJsonResponse(responseText: string): unknown {
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    throw new Error("Gemini returned invalid JSON.");
+  }
 }
 
 export async function generateSessionPlan(params: {
@@ -185,55 +255,17 @@ REQUIREMENTS
 7. Return only the requested structured JSON data.
 `;
 
-  let response;
-
-  try {
-    // Primary model.
-    response = await generateWithRetry(
-      ai,
-      PRIMARY_GEMINI_MODEL,
-      prompt
-    );
-  } catch (primaryError) {
-    // Only use the fallback for transient API availability/rate-limit
-    // errors. Non-transient errors should still surface immediately.
-    if (!isRetryableError(primaryError)) {
-      throw primaryError;
-    }
-
-    try {
-      // Fallback model.
-      response = await generateWithRetry(
-        ai,
-        FALLBACK_GEMINI_MODEL,
-        prompt
-      );
-    } catch (fallbackError) {
-      console.error(
-        `Primary Gemini model "${PRIMARY_GEMINI_MODEL}" failed:`,
-        primaryError
-      );
-
-      console.error(
-        `Fallback Gemini model "${FALLBACK_GEMINI_MODEL}" failed:`,
-        fallbackError
-      );
-
-      throw fallbackError;
-    }
-  }
+  const response = await generateWithFallback(
+    ai,
+    prompt,
+    SESSION_PLAN_SCHEMA
+  );
 
   if (!response.text) {
     throw new Error("Gemini returned an empty response.");
   }
 
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(response.text);
-  } catch {
-    throw new Error("Gemini returned invalid JSON.");
-  }
+  const parsed = parseJsonResponse(response.text);
 
   if (
     !parsed ||
@@ -251,17 +283,23 @@ REQUIREMENTS
     !Array.isArray(plan.objectives) ||
     plan.objectives.length !== 3 ||
     !plan.objectives.every(
-      (item) => typeof item === "string" && item.trim().length > 0
+      (item) =>
+        typeof item === "string" &&
+        item.trim().length > 0
     ) ||
     !Array.isArray(plan.lesson_outline) ||
     plan.lesson_outline.length !== 4 ||
     !plan.lesson_outline.every(
-      (item) => typeof item === "string" && item.trim().length > 0
+      (item) =>
+        typeof item === "string" &&
+        item.trim().length > 0
     ) ||
     !Array.isArray(plan.practice_questions) ||
     plan.practice_questions.length !== 3 ||
     !plan.practice_questions.every(
-      (item) => typeof item === "string" && item.trim().length > 0
+      (item) =>
+        typeof item === "string" &&
+        item.trim().length > 0
     )
   ) {
     throw new Error(
@@ -270,4 +308,128 @@ REQUIREMENTS
   }
 
   return plan;
+}
+
+export async function generateSessionReview(params: {
+  studentName: string;
+  subject: string;
+  currentLevel: string;
+  learningGoals: string;
+  weakAreas: string;
+  topic: string;
+  sessionNotes: string;
+  scheduledAt: string;
+  pastSessions: Array<{
+    scheduled_at: string;
+    topic: string;
+    status: string;
+  }>;
+  existingPlan?: SessionPlan | null;
+}): Promise<SessionReview> {
+  const ai = getGeminiClient();
+
+  if (!ai) {
+    throw new Error("Gemini API key is not configured.");
+  }
+
+  const pastSessionsText =
+    params.pastSessions.length > 0
+      ? params.pastSessions
+          .map(
+            (session) =>
+              `- ${session.scheduled_at}: ${session.topic} (${session.status})`
+          )
+          .join("\n")
+      : "No previous sessions available.";
+
+  const existingPlanText = params.existingPlan
+    ? `
+CURRENT AI SESSION PLAN
+
+Objectives:
+${params.existingPlan.objectives
+  .map((item) => `- ${item}`)
+  .join("\n")}
+
+Lesson outline:
+${params.existingPlan.lesson_outline
+  .map((item) => `- ${item}`)
+  .join("\n")}
+
+Practice questions:
+${params.existingPlan.practice_questions
+  .map((item) => `- ${item}`)
+  .join("\n")}
+`
+    : "No AI session plan was created for this session.";
+
+  const prompt = `
+You are an expert private tutor reviewing a completed one-on-one tutoring session.
+
+Analyze the student's actual session notes in the context of their profile, goals, weak areas, previous sessions, and planned lesson when available.
+
+STUDENT PROFILE
+Name: ${params.studentName}
+Subject: ${params.subject}
+Current level: ${params.currentLevel}
+Learning goals: ${params.learningGoals}
+Weak areas: ${params.weakAreas}
+
+CURRENT SESSION
+Topic: ${params.topic}
+Scheduled at: ${params.scheduledAt}
+
+SESSION NOTES
+${params.sessionNotes}
+
+PREVIOUS SESSIONS
+${pastSessionsText}
+
+${existingPlanText}
+
+REQUIREMENTS
+1. Write a concise but useful summary of what happened in the session.
+2. Evaluate progress using only evidence available in the session notes and provided context.
+3. Mention meaningful strengths or improvements when supported by the notes.
+4. Identify important areas that still need attention when supported by the notes.
+5. Recommend a specific next-session focus based on the student's goals and current needs.
+6. Do not invent events, performance, scores, or achievements that are not present in the provided information.
+7. Return only the requested structured JSON data.
+`;
+
+  const response = await generateWithFallback(
+    ai,
+    prompt,
+    SESSION_REVIEW_SCHEMA
+  );
+
+  if (!response.text) {
+    throw new Error("Gemini returned an empty response.");
+  }
+
+  const parsed = parseJsonResponse(response.text);
+
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    !("summary" in parsed) ||
+    !("next_session_suggestion" in parsed)
+  ) {
+    throw new Error("Gemini returned an invalid session review.");
+  }
+
+  const review = parsed as SessionReview;
+
+  if (
+    typeof review.summary !== "string" ||
+    review.summary.trim().length === 0 ||
+    typeof review.next_session_suggestion !== "string" ||
+    review.next_session_suggestion.trim().length === 0
+  ) {
+    throw new Error(
+      "Gemini returned an incorrectly structured session review."
+    );
+  }
+
+  return review;
 }

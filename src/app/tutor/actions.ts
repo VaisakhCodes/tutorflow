@@ -6,7 +6,11 @@ import {
   getAuthRole,
 } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generateSessionPlan } from "@/lib/ai/gemini";
+import {
+  generateSessionPlan,
+  generateSessionReview,
+  type SessionPlan,
+} from "@/lib/ai/gemini";
 
 export type CreateStudentInput = {
   email: string;
@@ -39,7 +43,6 @@ export async function createStudent(
   const learningGoals = input.learningGoals.trim();
   const weakAreas = input.weakAreas.trim();
 
-  // Basic server-side validation.
   if (
     !email ||
     !password ||
@@ -87,7 +90,6 @@ export async function createStudent(
     };
   }
 
-  // Create the Auth account using the privileged server client.
   const { data: authData, error: authError } =
     await admin.auth.admin.createUser({
       email,
@@ -98,13 +100,14 @@ export async function createStudent(
   if (authError || !authData.user) {
     return {
       success: false,
-      error: authError?.message ?? "Failed to create student account.",
+      error:
+        authError?.message ??
+        "Failed to create student account.",
     };
   }
 
   const studentUserId = authData.user.id;
 
-  // Create the student's profile.
   const { error: profileError } = await admin
     .from("profiles")
     .insert({
@@ -113,7 +116,6 @@ export async function createStudent(
     });
 
   if (profileError) {
-    // Remove the Auth user because the database setup failed.
     await admin.auth.admin.deleteUser(studentUserId);
 
     return {
@@ -122,29 +124,29 @@ export async function createStudent(
     };
   }
 
-  // Create the application-level student record.
-  const { data: student, error: studentError } = await admin
-    .from("students")
-    .insert({
-      profile_id: studentUserId,
-      tutor_id: auth.userId,
-      name,
-      subject,
-      current_level: currentLevel,
-      learning_goals: learningGoals,
-      weak_areas: weakAreas,
-    })
-    .select("id")
-    .single();
+  const { data: student, error: studentError } =
+    await admin
+      .from("students")
+      .insert({
+        profile_id: studentUserId,
+        tutor_id: auth.userId,
+        name,
+        subject,
+        current_level: currentLevel,
+        learning_goals: learningGoals,
+        weak_areas: weakAreas,
+      })
+      .select("id")
+      .single();
 
   if (studentError || !student) {
-    // Deleting the Auth user cascades to profiles because of the FK.
     await admin.auth.admin.deleteUser(studentUserId);
 
     return {
       success: false,
       error:
-        studentError?.message ?? "Failed to create student record.",
+        studentError?.message ??
+        "Failed to create student record.",
     };
   }
 
@@ -179,11 +181,11 @@ export async function scheduleSession(
   const scheduledAt = input.scheduledAt.trim();
   const topic = input.topic.trim();
 
-  // Basic validation.
   if (!studentId || !scheduledAt || !topic) {
     return {
       success: false,
-      error: "Student, date and time, and topic are required.",
+      error:
+        "Student, date and time, and topic are required.",
     };
   }
 
@@ -206,17 +208,18 @@ export async function scheduleSession(
   if (parsedDate <= new Date()) {
     return {
       success: false,
-      error: "A session must be scheduled for a future date and time.",
+      error:
+        "A session must be scheduled for a future date and time.",
     };
   }
 
-  // Verify authentication and tutor role.
   const auth = await getAuthRole();
 
   if (!auth) {
     return {
       success: false,
-      error: "You must be signed in to schedule a session.",
+      error:
+        "You must be signed in to schedule a session.",
     };
   }
 
@@ -236,13 +239,13 @@ export async function scheduleSession(
     };
   }
 
-  // Verify that the selected student belongs to this tutor.
-  const { data: student, error: studentError } = await supabase
-    .from("students")
-    .select("id")
-    .eq("id", studentId)
-    .eq("tutor_id", auth.userId)
-    .single();
+  const { data: student, error: studentError } =
+    await supabase
+      .from("students")
+      .select("id")
+      .eq("id", studentId)
+      .eq("tutor_id", auth.userId)
+      .single();
 
   if (studentError || !student) {
     return {
@@ -251,32 +254,33 @@ export async function scheduleSession(
     };
   }
 
-  // Create the session with its initial lifecycle state.
-  const { data: session, error: sessionError } = await supabase
-    .from("sessions")
-    .insert({
-      tutor_id: auth.userId,
-      student_id: studentId,
-      scheduled_at: parsedDate.toISOString(),
-      topic,
-      status: "scheduled",
-    })
-    .select("id")
-    .single();
+  const { data: session, error: sessionError } =
+    await supabase
+      .from("sessions")
+      .insert({
+        tutor_id: auth.userId,
+        student_id: studentId,
+        scheduled_at: parsedDate.toISOString(),
+        topic,
+        status: "scheduled",
+      })
+      .select("id")
+      .single();
 
   if (sessionError || !session) {
-    // PostgreSQL unique-constraint violation.
     if (sessionError?.code === "23505") {
       return {
         success: false,
-        error: "You already have a session scheduled at this time.",
+        error:
+          "You already have a session scheduled at this time.",
       };
     }
 
     return {
       success: false,
       error:
-        sessionError?.message ?? "Failed to schedule the session.",
+        sessionError?.message ??
+        "Failed to schedule the session.",
     };
   }
 
@@ -310,7 +314,6 @@ export async function generateSessionPlanForSession(
     };
   }
 
-  // Verify authentication and tutor role.
   const auth = await getAuthRole();
 
   if (!auth) {
@@ -323,7 +326,8 @@ export async function generateSessionPlanForSession(
   if (auth.role !== "tutor") {
     return {
       success: false,
-      error: "Only tutors can generate session plans.",
+      error:
+        "Only tutors can generate session plans.",
     };
   }
 
@@ -336,13 +340,15 @@ export async function generateSessionPlanForSession(
     };
   }
 
-  // Fetch only a session belonging to the authenticated tutor.
-  const { data: session, error: sessionError } = await supabase
-    .from("sessions")
-    .select("id, student_id, topic, scheduled_at")
-    .eq("id", normalizedSessionId)
-    .eq("tutor_id", auth.userId)
-    .single();
+  const { data: session, error: sessionError } =
+    await supabase
+      .from("sessions")
+      .select(
+        "id, student_id, topic, scheduled_at"
+      )
+      .eq("id", normalizedSessionId)
+      .eq("tutor_id", auth.userId)
+      .single();
 
   if (sessionError || !session) {
     return {
@@ -351,13 +357,14 @@ export async function generateSessionPlanForSession(
     };
   }
 
-  // Prevent generating multiple plans for the same session.
-  const { data: existingPlan, error: existingPlanError } =
-    await supabase
-      .from("ai_plans")
-      .select("id")
-      .eq("session_id", session.id)
-      .maybeSingle();
+  const {
+    data: existingPlan,
+    error: existingPlanError,
+  } = await supabase
+    .from("ai_plans")
+    .select("id")
+    .eq("session_id", session.id)
+    .maybeSingle();
 
   if (existingPlanError) {
     console.error(
@@ -367,7 +374,8 @@ export async function generateSessionPlanForSession(
 
     return {
       success: false,
-      error: "Unable to check the existing session plan.",
+      error:
+        "Unable to check the existing session plan.",
     };
   }
 
@@ -378,15 +386,15 @@ export async function generateSessionPlanForSession(
     };
   }
 
-  // Fetch the student's profile/application data.
-  const { data: student, error: studentError } = await supabase
-    .from("students")
-    .select(
-      "id, name, subject, current_level, learning_goals, weak_areas"
-    )
-    .eq("id", session.student_id)
-    .eq("tutor_id", auth.userId)
-    .single();
+  const { data: student, error: studentError } =
+    await supabase
+      .from("students")
+      .select(
+        "id, name, subject, current_level, learning_goals, weak_areas"
+      )
+      .eq("id", session.student_id)
+      .eq("tutor_id", auth.userId)
+      .single();
 
   if (studentError || !student) {
     return {
@@ -395,16 +403,19 @@ export async function generateSessionPlanForSession(
     };
   }
 
-  // Fetch previous sessions to give Gemini learning-history context.
-  const { data: pastSessions, error: pastSessionsError } =
-    await supabase
-      .from("sessions")
-      .select("scheduled_at, topic, status")
-      .eq("student_id", student.id)
-      .eq("tutor_id", auth.userId)
-      .neq("id", session.id)
-      .order("scheduled_at", { ascending: false })
-      .limit(10);
+  const {
+    data: pastSessions,
+    error: pastSessionsError,
+  } = await supabase
+    .from("sessions")
+    .select("scheduled_at, topic, status")
+    .eq("student_id", student.id)
+    .eq("tutor_id", auth.userId)
+    .neq("id", session.id)
+    .order("scheduled_at", {
+      ascending: false,
+    })
+    .limit(10);
 
   if (pastSessionsError) {
     console.error(
@@ -414,11 +425,12 @@ export async function generateSessionPlanForSession(
 
     return {
       success: false,
-      error: "Unable to load the student's previous sessions.",
+      error:
+        "Unable to load the student's previous sessions.",
     };
   }
 
-  let plan;
+  let plan: SessionPlan;
 
   try {
     plan = await generateSessionPlan({
@@ -428,14 +440,19 @@ export async function generateSessionPlanForSession(
       learningGoals: student.learning_goals,
       weakAreas: student.weak_areas,
       topic: session.topic,
-      pastSessions: (pastSessions ?? []).map((pastSession) => ({
-        scheduled_at: pastSession.scheduled_at,
-        topic: pastSession.topic,
-        status: pastSession.status,
-      })),
+      pastSessions: (pastSessions ?? []).map(
+        (pastSession) => ({
+          scheduled_at: pastSession.scheduled_at,
+          topic: pastSession.topic,
+          status: pastSession.status,
+        })
+      ),
     });
   } catch (error) {
-    console.error("AI session-plan generation failed:", error);
+    console.error(
+      "AI session-plan generation failed:",
+      error
+    );
 
     return {
       success: false,
@@ -446,8 +463,10 @@ export async function generateSessionPlanForSession(
     };
   }
 
-  // Save the structured AI result.
-  const { data: aiPlan, error: aiPlanError } = await supabase
+  const {
+    data: aiPlan,
+    error: aiPlanError,
+  } = await supabase
     .from("ai_plans")
     .insert({
       session_id: session.id,
@@ -460,19 +479,319 @@ export async function generateSessionPlanForSession(
     .single();
 
   if (aiPlanError || !aiPlan) {
-    console.error("Failed to save AI plan:", aiPlanError);
+    console.error(
+      "Failed to save AI plan:",
+      aiPlanError
+    );
 
     return {
       success: false,
-      error: "The AI plan was generated but could not be saved.",
+      error:
+        "The AI plan was generated but could not be saved.",
     };
   }
 
-  // Refresh the tutor dashboard so the newly saved plan is visible.
   revalidatePath("/tutor");
 
   return {
     success: true,
     planId: aiPlan.id,
+  };
+}
+
+export type GenerateSessionReviewResult =
+  | {
+      success: true;
+      reviewId: string;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+export async function generateSessionReviewForSession(
+  sessionId: string
+): Promise<GenerateSessionReviewResult> {
+  const normalizedSessionId = sessionId.trim();
+
+  if (!normalizedSessionId) {
+    return {
+      success: false,
+      error: "Session ID is required.",
+    };
+  }
+
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  if (auth.role !== "tutor") {
+    return {
+      success: false,
+      error:
+        "Only tutors can generate session reviews.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  const { data: session, error: sessionError } =
+    await supabase
+      .from("sessions")
+      .select(
+        "id, student_id, topic, scheduled_at"
+      )
+      .eq("id", normalizedSessionId)
+      .eq("tutor_id", auth.userId)
+      .single();
+
+  if (sessionError || !session) {
+    return {
+      success: false,
+      error: "Session could not be found.",
+    };
+  }
+
+  const {
+    data: existingReview,
+    error: existingReviewError,
+  } = await supabase
+    .from("ai_reviews")
+    .select("id")
+    .eq("session_id", session.id)
+    .maybeSingle();
+
+  if (existingReviewError) {
+    console.error(
+      "Failed to check for an existing AI review:",
+      existingReviewError
+    );
+
+    return {
+      success: false,
+      error:
+        "Unable to check the existing session review.",
+    };
+  }
+
+  if (existingReview) {
+    return {
+      success: true,
+      reviewId: existingReview.id,
+    };
+  }
+
+  const {
+    data: sessionNotes,
+    error: sessionNotesError,
+  } = await supabase
+    .from("session_notes")
+    .select("notes")
+    .eq("session_id", session.id)
+    .maybeSingle();
+
+  if (sessionNotesError) {
+    console.error(
+      "Failed to load session notes:",
+      sessionNotesError
+    );
+
+    return {
+      success: false,
+      error: "Unable to load the session notes.",
+    };
+  }
+
+  const notes = sessionNotes?.notes?.trim() ?? "";
+
+  if (!notes) {
+    return {
+      success: false,
+      error:
+        "Add session notes before generating an AI review.",
+    };
+  }
+
+  const { data: student, error: studentError } =
+    await supabase
+      .from("students")
+      .select(
+        "id, name, subject, current_level, learning_goals, weak_areas"
+      )
+      .eq("id", session.student_id)
+      .eq("tutor_id", auth.userId)
+      .single();
+
+  if (studentError || !student) {
+    return {
+      success: false,
+      error: "Student profile could not be found.",
+    };
+  }
+
+  const {
+    data: aiPlanRecord,
+    error: aiPlanError,
+  } = await supabase
+    .from("ai_plans")
+    .select(
+      "objectives, lesson_outline, practice_questions"
+    )
+    .eq("session_id", session.id)
+    .maybeSingle();
+
+  if (aiPlanError) {
+    console.error(
+      "Failed to load the AI session plan:",
+      aiPlanError
+    );
+  }
+
+  let existingPlan: SessionPlan | null = null;
+
+  if (
+    aiPlanRecord &&
+    Array.isArray(aiPlanRecord.objectives) &&
+    Array.isArray(aiPlanRecord.lesson_outline) &&
+    Array.isArray(aiPlanRecord.practice_questions)
+  ) {
+    const objectives = aiPlanRecord.objectives.filter(
+      (item): item is string =>
+        typeof item === "string"
+    );
+
+    const lessonOutline =
+      aiPlanRecord.lesson_outline.filter(
+        (item): item is string =>
+          typeof item === "string"
+      );
+
+    const practiceQuestions =
+      aiPlanRecord.practice_questions.filter(
+        (item): item is string =>
+          typeof item === "string"
+      );
+
+    if (
+      objectives.length === 3 &&
+      lessonOutline.length === 4 &&
+      practiceQuestions.length === 3
+    ) {
+      existingPlan = {
+        objectives,
+        lesson_outline: lessonOutline,
+        practice_questions: practiceQuestions,
+      };
+    }
+  }
+
+  const {
+    data: pastSessions,
+    error: pastSessionsError,
+  } = await supabase
+    .from("sessions")
+    .select("scheduled_at, topic, status")
+    .eq("student_id", student.id)
+    .eq("tutor_id", auth.userId)
+    .neq("id", session.id)
+    .order("scheduled_at", {
+      ascending: false,
+    })
+    .limit(10);
+
+  if (pastSessionsError) {
+    console.error(
+      "Failed to load previous sessions:",
+      pastSessionsError
+    );
+
+    return {
+      success: false,
+      error:
+        "Unable to load the student's previous sessions.",
+    };
+  }
+
+  let review;
+
+  try {
+    review = await generateSessionReview({
+      studentName: student.name,
+      subject: student.subject,
+      currentLevel: student.current_level,
+      learningGoals: student.learning_goals,
+      weakAreas: student.weak_areas,
+      topic: session.topic,
+      sessionNotes: notes,
+      scheduledAt: session.scheduled_at,
+      pastSessions: (pastSessions ?? []).map(
+        (pastSession) => ({
+          scheduled_at: pastSession.scheduled_at,
+          topic: pastSession.topic,
+          status: pastSession.status,
+        })
+      ),
+      existingPlan,
+    });
+  } catch (error) {
+    console.error(
+      "AI session-review generation failed:",
+      error
+    );
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to generate the AI session review.",
+    };
+  }
+
+  const {
+    data: aiReview,
+    error: aiReviewError,
+  } = await supabase
+    .from("ai_reviews")
+    .insert({
+      session_id: session.id,
+      summary: review.summary,
+      next_session_suggestion:
+        review.next_session_suggestion,
+      raw_response: review,
+    })
+    .select("id")
+    .single();
+
+  if (aiReviewError || !aiReview) {
+    console.error(
+      "Failed to save AI session review:",
+      aiReviewError
+    );
+
+    return {
+      success: false,
+      error:
+        "The AI review was generated but could not be saved.",
+    };
+  }
+
+  revalidatePath("/tutor");
+
+  return {
+    success: true,
+    reviewId: aiReview.id,
   };
 }
