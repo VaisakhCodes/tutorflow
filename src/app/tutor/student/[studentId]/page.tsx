@@ -191,7 +191,7 @@ export default async function StudentProgressPage({
         </div>
 
         {/* Student profile */}
-        <section className="mb-8 rounded-xl border border-slate-200 bg-white shadow-xs">
+        <section className="mb-8 rounded-lg border border-slate-200 bg-white">
           <div className="border-b border-slate-200 px-6 py-5">
             <h2 className="text-lg font-semibold text-slate-900">
               Student Profile
@@ -249,7 +249,7 @@ export default async function StudentProgressPage({
         <ProgressAISummary studentId={student.id} />
 
         {/* Session history */}
-        <section className="rounded-xl border border-slate-200 bg-white shadow-xs">
+        <section className="rounded-lg border border-slate-200 bg-white">
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">
@@ -271,7 +271,7 @@ export default async function StudentProgressPage({
 
           {sessionsError ? (
             <div className="p-6">
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 Failed to load session history. Please try
                 again.
               </div>
