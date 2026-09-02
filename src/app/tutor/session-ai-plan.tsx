@@ -59,7 +59,7 @@ export default function SessionAIPlan({
           )}
         </>
       ) : (
-        <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-5">
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h4 className="text-base font-semibold text-slate-900">
@@ -72,7 +72,7 @@ export default function SessionAIPlan({
               </p>
             </div>
 
-            <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700">
+            <span className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
               AI Ready
             </span>
           </div>
@@ -89,7 +89,7 @@ export default function SessionAIPlan({
                     key={`${plan.id}-objective-${index}`}
                     className="flex gap-3 text-sm text-slate-700"
                   >
-                    <span className="font-semibold text-violet-600">
+                    <span className="font-semibold text-violet-500">
                       {index + 1}.
                     </span>
 
@@ -110,7 +110,7 @@ export default function SessionAIPlan({
                     key={`${plan.id}-outline-${index}`}
                     className="flex gap-3 text-sm text-slate-700"
                   >
-                    <span className="font-semibold text-violet-600">
+                    <span className="font-semibold text-violet-500">
                       {index + 1}.
                     </span>
 
@@ -131,7 +131,7 @@ export default function SessionAIPlan({
                     key={`${plan.id}-question-${index}`}
                     className="flex gap-3 text-sm text-slate-700"
                   >
-                    <span className="font-semibold text-violet-600">
+                    <span className="font-semibold text-violet-500">
                       {index + 1}.
                     </span>
 

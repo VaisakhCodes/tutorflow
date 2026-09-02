@@ -49,8 +49,8 @@ export default function ProgressAISummary({
   }
 
   return (
-    <section className="mb-8 rounded-xl border border-violet-200 bg-white shadow-xs">
-      <div className="flex flex-col gap-4 border-b border-violet-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="mb-8 rounded-lg border border-slate-200 bg-white">
+      <div className="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">
             AI Progress Summary

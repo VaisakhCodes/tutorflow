@@ -76,7 +76,7 @@ export default function SessionAIReview({
         </div>
 
         {review ? (
-          <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-5">
+          <div className="rounded-lg border border-slate-200 bg-white p-5">
             <div>
               <h5 className="text-sm font-semibold text-slate-900">
                 Session Summary
