@@ -288,6 +288,7 @@ export async function scheduleSession(
   }
 
   revalidatePath("/tutor");
+  revalidatePath("/student");
 
   return {
     success: true,
@@ -295,9 +296,166 @@ export async function scheduleSession(
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Session status                                                             */
+/* -------------------------------------------------------------------------- */
+
+export type SessionStatus =
+  | "scheduled"
+  | "in_progress"
+  | "completed"
+  | "ai_reviewed";
+
+export type UpdateSessionStatusResult =
+  | {
+      success: true;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+export async function updateSessionStatus(
+  formData: FormData
+): Promise<UpdateSessionStatusResult> {
+  const sessionId = String(
+    formData.get("sessionId") ?? ""
+  ).trim();
+
+  const nextStatus = String(
+    formData.get("nextStatus") ?? ""
+  ).trim();
+
+  if (!sessionId) {
+    return {
+      success: false,
+      error: "Session ID is required.",
+    };
+  }
+
+  if (
+    nextStatus !== "in_progress" &&
+    nextStatus !== "completed"
+  ) {
+    return {
+      success: false,
+      error: "Invalid session status.",
+    };
+  }
+
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  if (auth.role !== "tutor") {
+    return {
+      success: false,
+      error:
+        "Only tutors can update session status.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  const {
+    data: session,
+    error: sessionError,
+  } = await supabase
+    .from("sessions")
+    .select("id, student_id, status")
+    .eq("id", sessionId)
+    .eq("tutor_id", auth.userId)
+    .single();
+
+  if (sessionError || !session) {
+    return {
+      success: false,
+      error: "Session could not be found.",
+    };
+  }
+
+  const currentStatus =
+    session.status as SessionStatus;
+
+  const allowedNextStatus: Partial<
+    Record<SessionStatus, SessionStatus>
+  > = {
+    scheduled: "in_progress",
+    in_progress: "completed",
+  };
+
+  const expectedNextStatus =
+    allowedNextStatus[currentStatus];
+
+  if (expectedNextStatus !== nextStatus) {
+    return {
+      success: false,
+      error:
+        `Invalid status transition: ${currentStatus} -> ${nextStatus}.`,
+    };
+  }
+
+  const { error: updateError } =
+    await supabase
+      .from("sessions")
+      .update({
+        status: nextStatus,
+      })
+      .eq("id", session.id)
+      .eq("tutor_id", auth.userId);
+
+  if (updateError) {
+    console.error(
+      "Failed to update session status:",
+      updateError
+    );
+
+    return {
+      success: false,
+      error:
+        "Failed to update the session status.",
+    };
+  }
+
+  revalidatePath("/tutor");
+  revalidatePath("/student");
+  revalidatePath(
+    `/tutor/student/${session.student_id}`
+  );
+
+  return {
+    success: true,
+  };
+}
+
 /**
- * Save or update notes for a tutor-owned session.
+ * Dedicated Server Action for the <form action={...}> API.
+ *
+ * This wrapper intentionally returns void so it can be used directly
+ * as a form action without creating an inline function in page.tsx.
  */
+export async function updateSessionStatusAction(
+  formData: FormData
+): Promise<void> {
+  await updateSessionStatus(formData);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Session notes                                                              */
+/* -------------------------------------------------------------------------- */
+
 export type SaveSessionNotesResult =
   | {
       success: true;
@@ -361,15 +519,15 @@ export async function saveSessionNotes(
     };
   }
 
-  // Verify that this session belongs to the
-  // authenticated tutor.
-  const { data: session, error: sessionError } =
-    await supabase
-      .from("sessions")
-      .select("id")
-      .eq("id", normalizedSessionId)
-      .eq("tutor_id", auth.userId)
-      .single();
+  const {
+    data: session,
+    error: sessionError,
+  } = await supabase
+    .from("sessions")
+    .select("id, student_id")
+    .eq("id", normalizedSessionId)
+    .eq("tutor_id", auth.userId)
+    .single();
 
   if (sessionError || !session) {
     return {
@@ -378,7 +536,6 @@ export async function saveSessionNotes(
     };
   }
 
-  // Check whether notes already exist.
   const {
     data: existingNotes,
     error: existingNotesError,
@@ -402,13 +559,15 @@ export async function saveSessionNotes(
   }
 
   if (existingNotes) {
-    const { error: updateError } = await supabase
-      .from("session_notes")
-      .update({
-        notes: normalizedNotes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existingNotes.id);
+    const { error: updateError } =
+      await supabase
+        .from("session_notes")
+        .update({
+          notes: normalizedNotes,
+          updated_at:
+            new Date().toISOString(),
+        })
+        .eq("id", existingNotes.id);
 
     if (updateError) {
       console.error(
@@ -422,12 +581,13 @@ export async function saveSessionNotes(
       };
     }
   } else {
-    const { error: insertError } = await supabase
-      .from("session_notes")
-      .insert({
-        session_id: session.id,
-        notes: normalizedNotes,
-      });
+    const { error: insertError } =
+      await supabase
+        .from("session_notes")
+        .insert({
+          session_id: session.id,
+          notes: normalizedNotes,
+        });
 
     if (insertError) {
       console.error(
@@ -443,11 +603,18 @@ export async function saveSessionNotes(
   }
 
   revalidatePath("/tutor");
+  revalidatePath(
+    `/tutor/student/${session.student_id}`
+  );
 
   return {
     success: true,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* AI session plan                                                            */
+/* -------------------------------------------------------------------------- */
 
 export type GenerateSessionPlanResult =
   | {
@@ -600,17 +767,19 @@ export async function generateSessionPlanForSession(
       studentName: student.name,
       subject: student.subject,
       currentLevel: student.current_level,
-      learningGoals: student.learning_goals,
+      learningGoals:
+        student.learning_goals,
       weakAreas: student.weak_areas,
       topic: session.topic,
-      pastSessions: (pastSessions ?? []).map(
-        (pastSession) => ({
-          scheduled_at:
-            pastSession.scheduled_at,
-          topic: pastSession.topic,
-          status: pastSession.status,
-        })
-      ),
+      pastSessions:
+        (pastSessions ?? []).map(
+          (pastSession) => ({
+            scheduled_at:
+              pastSession.scheduled_at,
+            topic: pastSession.topic,
+            status: pastSession.status,
+          })
+        ),
     });
   } catch (error) {
     console.error(
@@ -658,12 +827,19 @@ export async function generateSessionPlanForSession(
   }
 
   revalidatePath("/tutor");
+  revalidatePath(
+    `/tutor/student/${session.student_id}`
+  );
 
   return {
     success: true,
     planId: aiPlan.id,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* AI session review                                                          */
+/* -------------------------------------------------------------------------- */
 
 export type GenerateSessionReviewResult =
   | {
@@ -782,7 +958,8 @@ export async function generateSessionReviewForSession(
     };
   }
 
-  const notes = sessionNotes?.notes?.trim() ?? "";
+  const notes =
+    sessionNotes?.notes?.trim() ?? "";
 
   if (!notes) {
     return {
@@ -829,13 +1006,16 @@ export async function generateSessionReviewForSession(
     );
   }
 
-  let existingPlan: SessionPlan | null = null;
+  let existingPlan: SessionPlan | null =
+    null;
 
   if (
     aiPlanRecord &&
     Array.isArray(aiPlanRecord.objectives) &&
     Array.isArray(aiPlanRecord.lesson_outline) &&
-    Array.isArray(aiPlanRecord.practice_questions)
+    Array.isArray(
+      aiPlanRecord.practice_questions
+    )
   ) {
     const objectives =
       aiPlanRecord.objectives.filter(
@@ -904,20 +1084,24 @@ export async function generateSessionReviewForSession(
     review = await generateSessionReview({
       studentName: student.name,
       subject: student.subject,
-      currentLevel: student.current_level,
-      learningGoals: student.learning_goals,
+      currentLevel:
+        student.current_level,
+      learningGoals:
+        student.learning_goals,
       weakAreas: student.weak_areas,
       topic: session.topic,
       sessionNotes: notes,
-      scheduledAt: session.scheduled_at,
-      pastSessions: (pastSessions ?? []).map(
-        (pastSession) => ({
-          scheduled_at:
-            pastSession.scheduled_at,
-          topic: pastSession.topic,
-          status: pastSession.status,
-        })
-      ),
+      scheduledAt:
+        session.scheduled_at,
+      pastSessions:
+        (pastSessions ?? []).map(
+          (pastSession) => ({
+            scheduled_at:
+              pastSession.scheduled_at,
+            topic: pastSession.topic,
+            status: pastSession.status,
+          })
+        ),
       existingPlan,
     });
   } catch (error) {
@@ -964,12 +1148,19 @@ export async function generateSessionReviewForSession(
   }
 
   revalidatePath("/tutor");
+  revalidatePath(
+    `/tutor/student/${session.student_id}`
+  );
 
   return {
     success: true,
     reviewId: aiReview.id,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* AI progress summary                                                        */
+/* -------------------------------------------------------------------------- */
 
 export type GenerateProgressSummaryResult =
   | {
@@ -981,14 +1172,11 @@ export type GenerateProgressSummaryResult =
       error: string;
     };
 
-/**
- * Generate a progress summary for a tutor-owned student
- * using the student's past AI session reviews.
- */
 export async function generateProgressSummaryForStudent(
   studentId: string
 ): Promise<GenerateProgressSummaryResult> {
-  const normalizedStudentId = studentId.trim();
+  const normalizedStudentId =
+    studentId.trim();
 
   if (!normalizedStudentId) {
     return {
@@ -1023,7 +1211,6 @@ export async function generateProgressSummaryForStudent(
     };
   }
 
-  // Verify that the student belongs to the authenticated tutor.
   const {
     data: student,
     error: studentError,
@@ -1043,7 +1230,6 @@ export async function generateProgressSummaryForStudent(
     };
   }
 
-  // Load this student's sessions.
   const {
     data: sessions,
     error: sessionsError,
@@ -1082,11 +1268,11 @@ export async function generateProgressSummaryForStudent(
     };
   }
 
-  const sessionIds = sessionRecords.map(
-    (session) => session.id
-  );
+  const sessionIds =
+    sessionRecords.map(
+      (session) => session.id
+    );
 
-  // Load the AI reviews belonging to these sessions.
   const {
     data: reviews,
     error: reviewsError,
@@ -1110,33 +1296,41 @@ export async function generateProgressSummaryForStudent(
     };
   }
 
-  const reviewBySessionId = new Map(
-    (reviews ?? []).map((review) => [
-      review.session_id,
-      review,
-    ])
-  );
-
-  const reviewedSessions = sessionRecords
-    .map((session) => {
-      const review = reviewBySessionId.get(
-        session.id
-      );
-
-      return {
-        scheduled_at: session.scheduled_at,
-        topic: session.topic,
-        status: session.status,
-        reviewSummary: review?.summary ?? null,
-        nextSessionSuggestion:
-          review?.next_session_suggestion ?? null,
-      };
-    })
-    .filter(
-      (session) =>
-        typeof session.reviewSummary === "string" &&
-        session.reviewSummary.trim().length > 0
+  const reviewBySessionId =
+    new Map(
+      (reviews ?? []).map((review) => [
+        review.session_id,
+        review,
+      ])
     );
+
+  const reviewedSessions =
+    sessionRecords
+      .map((session) => {
+        const review =
+          reviewBySessionId.get(
+            session.id
+          );
+
+        return {
+          scheduled_at:
+            session.scheduled_at,
+          topic: session.topic,
+          status: session.status,
+          reviewSummary:
+            review?.summary ?? null,
+          nextSessionSuggestion:
+            review?.next_session_suggestion ??
+            null,
+        };
+      })
+      .filter(
+        (session) =>
+          typeof session.reviewSummary ===
+            "string" &&
+          session.reviewSummary.trim()
+            .length > 0
+      );
 
   if (reviewedSessions.length === 0) {
     return {
@@ -1149,14 +1343,19 @@ export async function generateProgressSummaryForStudent(
   let progressSummary: ProgressSummary;
 
   try {
-    progressSummary = await generateProgressSummary({
-      studentName: student.name,
-      subject: student.subject,
-      currentLevel: student.current_level,
-      learningGoals: student.learning_goals,
-      weakAreas: student.weak_areas,
-      sessions: reviewedSessions,
-    });
+    progressSummary =
+      await generateProgressSummary({
+        studentName: student.name,
+        subject: student.subject,
+        currentLevel:
+          student.current_level,
+        learningGoals:
+          student.learning_goals,
+        weakAreas:
+          student.weak_areas,
+        sessions:
+          reviewedSessions,
+      });
   } catch (error) {
     console.error(
       "AI progress-summary generation failed:",

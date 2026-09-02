@@ -3,11 +3,16 @@ import {
   createClient,
 } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+
 import AddStudentForm from "./add-student-form";
 import ScheduleSessionForm from "./schedule-session-form";
 import SessionAIPlan from "./session-ai-plan";
 import SessionNotes from "./session-notes";
 import SessionAIReview from "./session-ai-review";
+
+import {
+  updateSessionStatusAction,
+} from "./actions";
 
 type SessionStudent = {
   name: string;
@@ -60,6 +65,51 @@ function normalizeStringArray(
   );
 }
 
+function getSessionStatusLabel(
+  status: string
+): string {
+  switch (status) {
+    case "in_progress":
+      return "In progress";
+
+    case "ai_reviewed":
+      return "AI reviewed";
+
+    case "scheduled":
+      return "Scheduled";
+
+    case "completed":
+      return "Completed";
+
+    default:
+      return (
+        status.charAt(0).toUpperCase() +
+        status.slice(1)
+      );
+  }
+}
+
+function getSessionStatusClasses(
+  status: string
+): string {
+  switch (status) {
+    case "scheduled":
+      return "bg-amber-50 text-amber-700 border border-amber-100";
+
+    case "in_progress":
+      return "bg-blue-50 text-blue-700 border border-blue-100";
+
+    case "completed":
+      return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+
+    case "ai_reviewed":
+      return "bg-violet-50 text-violet-700 border border-violet-100";
+
+    default:
+      return "bg-slate-100 text-slate-700 border border-slate-200";
+  }
+}
+
 export default async function TutorPage() {
   const auth = await getAuthRole();
 
@@ -94,9 +144,6 @@ export default async function TutorPage() {
     );
   }
 
-  /*
-   * Load students assigned to this tutor.
-   */
   const {
     data: students,
     error: studentsError,
@@ -110,9 +157,6 @@ export default async function TutorPage() {
       ascending: false,
     });
 
-  /*
-   * Load sessions assigned to this tutor.
-   */
   const {
     data: sessionsData,
     error: sessionsError,
@@ -143,9 +187,6 @@ export default async function TutorPage() {
     (session) => session.id
   );
 
-  /*
-   * Load AI session plans for all visible sessions.
-   */
   let aiPlans: AIPlanRecord[] = [];
 
   if (sessionIds.length > 0) {
@@ -175,9 +216,10 @@ export default async function TutorPage() {
       plan.session_id,
       {
         id: plan.id,
-        objectives: normalizeStringArray(
-          plan.objectives
-        ),
+        objectives:
+          normalizeStringArray(
+            plan.objectives
+          ),
         lesson_outline:
           normalizeStringArray(
             plan.lesson_outline
@@ -190,10 +232,8 @@ export default async function TutorPage() {
     ])
   );
 
-  /*
-   * Load session notes for all visible sessions.
-   */
-  let sessionNotes: SessionNotesRecord[] = [];
+  let sessionNotes: SessionNotesRecord[] =
+    [];
 
   if (sessionIds.length > 0) {
     const {
@@ -216,17 +256,16 @@ export default async function TutorPage() {
     }
   }
 
-  const sessionNotesBySessionId = new Map(
-    sessionNotes.map((note) => [
-      note.session_id,
-      note.notes,
-    ])
-  );
+  const sessionNotesBySessionId =
+    new Map(
+      sessionNotes.map((note) => [
+        note.session_id,
+        note.notes,
+      ])
+    );
 
-  /*
-   * Load AI session reviews for all visible sessions.
-   */
-  let sessionReviews: SessionAIReviewRecord[] = [];
+  let sessionReviews:
+    SessionAIReviewRecord[] = [];
 
   if (sessionIds.length > 0) {
     const {
@@ -349,9 +388,10 @@ export default async function TutorPage() {
                     ? session.students[0] ?? null
                     : session.students;
 
-                const scheduledDate = new Date(
-                  session.scheduled_at
-                );
+                const scheduledDate =
+                  new Date(
+                    session.scheduled_at
+                  );
 
                 const aiPlan =
                   aiPlanBySessionId.get(
@@ -367,6 +407,21 @@ export default async function TutorPage() {
                   sessionReviewsBySessionId.get(
                     session.id
                   ) ?? null;
+
+                const canStart =
+                  session.status ===
+                  "scheduled";
+
+                const canComplete =
+                  session.status ===
+                  "in_progress";
+
+                const nextStatus =
+                  canStart
+                    ? "in_progress"
+                    : canComplete
+                      ? "completed"
+                      : null;
 
                 return (
                   <div
@@ -395,42 +450,57 @@ export default async function TutorPage() {
                           {scheduledDate.toLocaleString(
                             [],
                             {
-                              dateStyle: "medium",
-                              timeStyle: "short",
+                              dateStyle:
+                                "medium",
+                              timeStyle:
+                                "short",
                             }
                           )}
                         </p>
                       </div>
 
                       <span
-                        className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          session.status ===
-                          "scheduled"
-                            ? "bg-amber-50 text-amber-700 border border-amber-100"
-                            : session.status ===
-                                "in_progress"
-                              ? "bg-blue-50 text-blue-700 border border-blue-100"
-                              : session.status ===
-                                  "completed"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                : session.status ===
-                                    "ai_reviewed"
-                                  ? "bg-violet-50 text-violet-700 border border-violet-100"
-                                  : "bg-slate-100 text-slate-700 border border-slate-200"
-                        }`}
+                        className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getSessionStatusClasses(
+                          session.status
+                        )}`}
                       >
-                        {session.status ===
-                        "in_progress"
-                          ? "In progress"
-                          : session.status ===
-                              "ai_reviewed"
-                            ? "AI reviewed"
-                            : session.status
-                                .charAt(0)
-                                .toUpperCase() +
-                              session.status.slice(1)}
+                        {getSessionStatusLabel(
+                          session.status
+                        )}
                       </span>
                     </div>
+
+                    {/* Session status controls */}
+                    {nextStatus ? (
+                      <div className="mt-4 flex justify-end">
+                        <form
+                          action={
+                            updateSessionStatusAction
+                          }
+                        >
+                          <input
+                            type="hidden"
+                            name="sessionId"
+                            value={session.id}
+                          />
+
+                          <input
+                            type="hidden"
+                            name="nextStatus"
+                            value={nextStatus}
+                          />
+
+                          <button
+                            type="submit"
+                            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                          >
+                            {canStart
+                              ? "Start Session"
+                              : "Complete Session"}
+                          </button>
+                        </form>
+                      </div>
+                    ) : null}
 
                     {/* AI Session Plan */}
                     <SessionAIPlan
