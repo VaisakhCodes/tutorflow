@@ -250,7 +250,8 @@ export async function scheduleSession(
   if (studentError || !student) {
     return {
       success: false,
-      error: "The selected student is not assigned to you.",
+      error:
+        "The selected student is not assigned to you.",
     };
   }
 
@@ -289,6 +290,160 @@ export async function scheduleSession(
   return {
     success: true,
     sessionId: session.id,
+  };
+}
+
+/**
+ * Save or update notes for a tutor-owned session.
+ */
+export type SaveSessionNotesResult =
+  | {
+      success: true;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+export async function saveSessionNotes(
+  sessionId: string,
+  notes: string
+): Promise<SaveSessionNotesResult> {
+  const normalizedSessionId = sessionId.trim();
+  const normalizedNotes = notes.trim();
+
+  if (!normalizedSessionId) {
+    return {
+      success: false,
+      error: "Session ID is required.",
+    };
+  }
+
+  if (!normalizedNotes) {
+    return {
+      success: false,
+      error: "Session notes cannot be empty.",
+    };
+  }
+
+  if (normalizedNotes.length > 10000) {
+    return {
+      success: false,
+      error:
+        "Session notes must be 10,000 characters or fewer.",
+    };
+  }
+
+  const auth = await getAuthRole();
+
+  if (!auth) {
+    return {
+      success: false,
+      error: "You must be signed in.",
+    };
+  }
+
+  if (auth.role !== "tutor") {
+    return {
+      success: false,
+      error: "Only tutors can save session notes.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  if (!supabase) {
+    return {
+      success: false,
+      error: "Server configuration is incomplete.",
+    };
+  }
+
+  // Verify that this session belongs to the
+  // authenticated tutor.
+  const { data: session, error: sessionError } =
+    await supabase
+      .from("sessions")
+      .select("id")
+      .eq("id", normalizedSessionId)
+      .eq("tutor_id", auth.userId)
+      .single();
+
+  if (sessionError || !session) {
+    return {
+      success: false,
+      error: "Session could not be found.",
+    };
+  }
+
+  // Check whether notes already exist.
+  const {
+    data: existingNotes,
+    error: existingNotesError,
+  } = await supabase
+    .from("session_notes")
+    .select("id")
+    .eq("session_id", session.id)
+    .maybeSingle();
+
+  if (existingNotesError) {
+    console.error(
+      "Failed to check existing session notes:",
+      existingNotesError
+    );
+
+    return {
+      success: false,
+      error:
+        "Unable to load the existing session notes.",
+    };
+  }
+
+  if (existingNotes) {
+    const { error: updateError } = await supabase
+      .from("session_notes")
+      .update({
+        notes: normalizedNotes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existingNotes.id);
+
+    if (updateError) {
+      console.error(
+        "Failed to update session notes:",
+        updateError
+      );
+
+      return {
+        success: false,
+        error: "Failed to save session notes.",
+      };
+    }
+  } else {
+    const { error: insertError } = await supabase
+      .from("session_notes")
+      .insert({
+        session_id: session.id,
+        notes: normalizedNotes,
+      });
+
+    if (insertError) {
+      console.error(
+        "Failed to create session notes:",
+        insertError
+      );
+
+      return {
+        success: false,
+        error: "Failed to save session notes.",
+      };
+    }
+  }
+
+  revalidatePath("/tutor");
+
+  return {
+    success: true,
   };
 }
 
@@ -340,15 +495,17 @@ export async function generateSessionPlanForSession(
     };
   }
 
-  const { data: session, error: sessionError } =
-    await supabase
-      .from("sessions")
-      .select(
-        "id, student_id, topic, scheduled_at"
-      )
-      .eq("id", normalizedSessionId)
-      .eq("tutor_id", auth.userId)
-      .single();
+  const {
+    data: session,
+    error: sessionError,
+  } = await supabase
+    .from("sessions")
+    .select(
+      "id, student_id, topic, scheduled_at"
+    )
+    .eq("id", normalizedSessionId)
+    .eq("tutor_id", auth.userId)
+    .single();
 
   if (sessionError || !session) {
     return {
@@ -386,15 +543,17 @@ export async function generateSessionPlanForSession(
     };
   }
 
-  const { data: student, error: studentError } =
-    await supabase
-      .from("students")
-      .select(
-        "id, name, subject, current_level, learning_goals, weak_areas"
-      )
-      .eq("id", session.student_id)
-      .eq("tutor_id", auth.userId)
-      .single();
+  const {
+    data: student,
+    error: studentError,
+  } = await supabase
+    .from("students")
+    .select(
+      "id, name, subject, current_level, learning_goals, weak_areas"
+    )
+    .eq("id", session.student_id)
+    .eq("tutor_id", auth.userId)
+    .single();
 
   if (studentError || !student) {
     return {
@@ -408,7 +567,9 @@ export async function generateSessionPlanForSession(
     error: pastSessionsError,
   } = await supabase
     .from("sessions")
-    .select("scheduled_at, topic, status")
+    .select(
+      "scheduled_at, topic, status"
+    )
     .eq("student_id", student.id)
     .eq("tutor_id", auth.userId)
     .neq("id", session.id)
@@ -442,7 +603,8 @@ export async function generateSessionPlanForSession(
       topic: session.topic,
       pastSessions: (pastSessions ?? []).map(
         (pastSession) => ({
-          scheduled_at: pastSession.scheduled_at,
+          scheduled_at:
+            pastSession.scheduled_at,
           topic: pastSession.topic,
           status: pastSession.status,
         })
@@ -471,8 +633,10 @@ export async function generateSessionPlanForSession(
     .insert({
       session_id: session.id,
       objectives: plan.objectives,
-      lesson_outline: plan.lesson_outline,
-      practice_questions: plan.practice_questions,
+      lesson_outline:
+        plan.lesson_outline,
+      practice_questions:
+        plan.practice_questions,
       raw_response: plan,
     })
     .select("id")
@@ -547,15 +711,17 @@ export async function generateSessionReviewForSession(
     };
   }
 
-  const { data: session, error: sessionError } =
-    await supabase
-      .from("sessions")
-      .select(
-        "id, student_id, topic, scheduled_at"
-      )
-      .eq("id", normalizedSessionId)
-      .eq("tutor_id", auth.userId)
-      .single();
+  const {
+    data: session,
+    error: sessionError,
+  } = await supabase
+    .from("sessions")
+    .select(
+      "id, student_id, topic, scheduled_at"
+    )
+    .eq("id", normalizedSessionId)
+    .eq("tutor_id", auth.userId)
+    .single();
 
   if (sessionError || !session) {
     return {
@@ -624,15 +790,17 @@ export async function generateSessionReviewForSession(
     };
   }
 
-  const { data: student, error: studentError } =
-    await supabase
-      .from("students")
-      .select(
-        "id, name, subject, current_level, learning_goals, weak_areas"
-      )
-      .eq("id", session.student_id)
-      .eq("tutor_id", auth.userId)
-      .single();
+  const {
+    data: student,
+    error: studentError,
+  } = await supabase
+    .from("students")
+    .select(
+      "id, name, subject, current_level, learning_goals, weak_areas"
+    )
+    .eq("id", session.student_id)
+    .eq("tutor_id", auth.userId)
+    .single();
 
   if (studentError || !student) {
     return {
@@ -667,10 +835,11 @@ export async function generateSessionReviewForSession(
     Array.isArray(aiPlanRecord.lesson_outline) &&
     Array.isArray(aiPlanRecord.practice_questions)
   ) {
-    const objectives = aiPlanRecord.objectives.filter(
-      (item): item is string =>
-        typeof item === "string"
-    );
+    const objectives =
+      aiPlanRecord.objectives.filter(
+        (item): item is string =>
+          typeof item === "string"
+      );
 
     const lessonOutline =
       aiPlanRecord.lesson_outline.filter(
@@ -692,7 +861,8 @@ export async function generateSessionReviewForSession(
       existingPlan = {
         objectives,
         lesson_outline: lessonOutline,
-        practice_questions: practiceQuestions,
+        practice_questions:
+          practiceQuestions,
       };
     }
   }
@@ -702,7 +872,9 @@ export async function generateSessionReviewForSession(
     error: pastSessionsError,
   } = await supabase
     .from("sessions")
-    .select("scheduled_at, topic, status")
+    .select(
+      "scheduled_at, topic, status"
+    )
     .eq("student_id", student.id)
     .eq("tutor_id", auth.userId)
     .neq("id", session.id)
@@ -738,7 +910,8 @@ export async function generateSessionReviewForSession(
       scheduledAt: session.scheduled_at,
       pastSessions: (pastSessions ?? []).map(
         (pastSession) => ({
-          scheduled_at: pastSession.scheduled_at,
+          scheduled_at:
+            pastSession.scheduled_at,
           topic: pastSession.topic,
           status: pastSession.status,
         })

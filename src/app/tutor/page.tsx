@@ -1,8 +1,13 @@
-import { getAuthRole, createClient } from "@/lib/supabase/server";
+import {
+  getAuthRole,
+  createClient,
+} from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import AddStudentForm from "./add-student-form";
 import ScheduleSessionForm from "./schedule-session-form";
 import SessionAIPlan from "./session-ai-plan";
+import SessionNotes from "./session-notes";
+import SessionAIReview from "./session-ai-review";
 
 type SessionStudent = {
   name: string;
@@ -15,7 +20,10 @@ type SessionRecord = {
   topic: string;
   status: string;
   student_id: string;
-  students: SessionStudent | SessionStudent[] | null;
+  students:
+    | SessionStudent
+    | SessionStudent[]
+    | null;
 };
 
 type AIPlanRecord = {
@@ -26,13 +34,29 @@ type AIPlanRecord = {
   practice_questions: unknown;
 };
 
-function normalizeStringArray(value: unknown): string[] {
+type SessionNotesRecord = {
+  id: string;
+  session_id: string;
+  notes: string;
+};
+
+type SessionAIReviewRecord = {
+  id: string;
+  session_id: string;
+  summary: string;
+  next_session_suggestion: string;
+};
+
+function normalizeStringArray(
+  value: unknown
+): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
   return value.filter(
-    (item): item is string => typeof item === "string"
+    (item): item is string =>
+      typeof item === "string"
   );
 }
 
@@ -70,15 +94,29 @@ export default async function TutorPage() {
     );
   }
 
-  const { data: students, error: studentsError } = await supabase
+  /*
+   * Load students assigned to this tutor.
+   */
+  const {
+    data: students,
+    error: studentsError,
+  } = await supabase
     .from("students")
     .select(
       "id, name, subject, current_level, learning_goals, weak_areas, created_at"
     )
     .eq("tutor_id", auth.userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", {
+      ascending: false,
+    });
 
-  const { data: sessionsData, error: sessionsError } = await supabase
+  /*
+   * Load sessions assigned to this tutor.
+   */
+  const {
+    data: sessionsData,
+    error: sessionsError,
+  } = await supabase
     .from("sessions")
     .select(
       `
@@ -94,16 +132,27 @@ export default async function TutorPage() {
       `
     )
     .eq("tutor_id", auth.userId)
-    .order("scheduled_at", { ascending: true });
+    .order("scheduled_at", {
+      ascending: true,
+    });
 
-  const sessions = (sessionsData ?? []) as SessionRecord[];
+  const sessions =
+    (sessionsData ?? []) as SessionRecord[];
 
-  const sessionIds = sessions.map((session) => session.id);
+  const sessionIds = sessions.map(
+    (session) => session.id
+  );
 
+  /*
+   * Load AI session plans for all visible sessions.
+   */
   let aiPlans: AIPlanRecord[] = [];
 
   if (sessionIds.length > 0) {
-    const { data: aiPlansData, error: aiPlansError } = await supabase
+    const {
+      data: aiPlansData,
+      error: aiPlansError,
+    } = await supabase
       .from("ai_plans")
       .select(
         "id, session_id, objectives, lesson_outline, practice_questions"
@@ -111,9 +160,13 @@ export default async function TutorPage() {
       .in("session_id", sessionIds);
 
     if (aiPlansError) {
-      console.error("Failed to load AI plans:", aiPlansError);
+      console.error(
+        "Failed to load AI plans:",
+        aiPlansError
+      );
     } else {
-      aiPlans = (aiPlansData ?? []) as AIPlanRecord[];
+      aiPlans =
+        (aiPlansData ?? []) as AIPlanRecord[];
     }
   }
 
@@ -122,14 +175,94 @@ export default async function TutorPage() {
       plan.session_id,
       {
         id: plan.id,
-        objectives: normalizeStringArray(plan.objectives),
-        lesson_outline: normalizeStringArray(plan.lesson_outline),
-        practice_questions: normalizeStringArray(
-          plan.practice_questions
+        objectives: normalizeStringArray(
+          plan.objectives
         ),
+        lesson_outline:
+          normalizeStringArray(
+            plan.lesson_outline
+          ),
+        practice_questions:
+          normalizeStringArray(
+            plan.practice_questions
+          ),
       },
     ])
   );
+
+  /*
+   * Load session notes for all visible sessions.
+   */
+  let sessionNotes: SessionNotesRecord[] = [];
+
+  if (sessionIds.length > 0) {
+    const {
+      data: sessionNotesData,
+      error: sessionNotesError,
+    } = await supabase
+      .from("session_notes")
+      .select("id, session_id, notes")
+      .in("session_id", sessionIds);
+
+    if (sessionNotesError) {
+      console.error(
+        "Failed to load session notes:",
+        sessionNotesError
+      );
+    } else {
+      sessionNotes =
+        (sessionNotesData ??
+          []) as SessionNotesRecord[];
+    }
+  }
+
+  const sessionNotesBySessionId = new Map(
+    sessionNotes.map((note) => [
+      note.session_id,
+      note.notes,
+    ])
+  );
+
+  /*
+   * Load AI session reviews for all visible sessions.
+   */
+  let sessionReviews: SessionAIReviewRecord[] = [];
+
+  if (sessionIds.length > 0) {
+    const {
+      data: sessionReviewsData,
+      error: sessionReviewsError,
+    } = await supabase
+      .from("ai_reviews")
+      .select(
+        "id, session_id, summary, next_session_suggestion"
+      )
+      .in("session_id", sessionIds);
+
+    if (sessionReviewsError) {
+      console.error(
+        "Failed to load AI session reviews:",
+        sessionReviewsError
+      );
+    } else {
+      sessionReviews =
+        (sessionReviewsData ??
+          []) as SessionAIReviewRecord[];
+    }
+  }
+
+  const sessionReviewsBySessionId =
+    new Map(
+      sessionReviews.map((review) => [
+        review.session_id,
+        {
+          id: review.id,
+          summary: review.summary,
+          next_session_suggestion:
+            review.next_session_suggestion,
+        },
+      ])
+    );
 
   const scheduleStudents =
     students?.map((student) => ({
@@ -146,7 +279,10 @@ export default async function TutorPage() {
             TutorFlow
           </span>
 
-          <form action="/auth/logout" method="POST">
+          <form
+            action="/auth/logout"
+            method="POST"
+          >
             <button
               type="submit"
               className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-md cursor-pointer transition"
@@ -174,7 +310,9 @@ export default async function TutorPage() {
 
         <AddStudentForm />
 
-        <ScheduleSessionForm students={scheduleStudents} />
+        <ScheduleSessionForm
+          students={scheduleStudents}
+        />
 
         {/* Sessions */}
         <section className="mb-8 bg-white border border-slate-200 rounded-xl shadow-xs">
@@ -191,7 +329,9 @@ export default async function TutorPage() {
 
             <span className="text-sm font-medium text-slate-500">
               {sessions.length}{" "}
-              {sessions.length === 1 ? "session" : "sessions"}
+              {sessions.length === 1
+                ? "session"
+                : "sessions"}
             </span>
           </div>
 
@@ -204,15 +344,29 @@ export default async function TutorPage() {
           ) : sessions.length > 0 ? (
             <div className="divide-y divide-slate-200">
               {sessions.map((session) => {
-                const sessionStudent = Array.isArray(session.students)
-                  ? session.students[0] ?? null
-                  : session.students;
+                const sessionStudent =
+                  Array.isArray(session.students)
+                    ? session.students[0] ?? null
+                    : session.students;
 
                 const scheduledDate = new Date(
                   session.scheduled_at
                 );
 
-                const aiPlan = aiPlanBySessionId.get(session.id);
+                const aiPlan =
+                  aiPlanBySessionId.get(
+                    session.id
+                  );
+
+                const notes =
+                  sessionNotesBySessionId.get(
+                    session.id
+                  ) ?? "";
+
+                const review =
+                  sessionReviewsBySessionId.get(
+                    session.id
+                  ) ?? null;
 
                 return (
                   <div
@@ -223,7 +377,8 @@ export default async function TutorPage() {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-base font-semibold text-slate-900">
-                            {sessionStudent?.name ?? "Unknown student"}
+                            {sessionStudent?.name ??
+                              "Unknown student"}
                           </h3>
 
                           <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs">
@@ -237,36 +392,65 @@ export default async function TutorPage() {
                         </p>
 
                         <p className="mt-1 text-sm text-slate-500">
-                          {scheduledDate.toLocaleString([], {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}
+                          {scheduledDate.toLocaleString(
+                            [],
+                            {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            }
+                          )}
                         </p>
                       </div>
 
                       <span
                         className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          session.status === "scheduled"
+                          session.status ===
+                          "scheduled"
                             ? "bg-amber-50 text-amber-700 border border-amber-100"
-                            : session.status === "in_progress"
+                            : session.status ===
+                                "in_progress"
                               ? "bg-blue-50 text-blue-700 border border-blue-100"
-                              : session.status === "completed"
+                              : session.status ===
+                                  "completed"
                                 ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                : "bg-violet-50 text-violet-700 border border-violet-100"
+                                : session.status ===
+                                    "ai_reviewed"
+                                  ? "bg-violet-50 text-violet-700 border border-violet-100"
+                                  : "bg-slate-100 text-slate-700 border border-slate-200"
                         }`}
                       >
-                        {session.status === "in_progress"
+                        {session.status ===
+                        "in_progress"
                           ? "In progress"
-                          : session.status === "ai_reviewed"
+                          : session.status ===
+                              "ai_reviewed"
                             ? "AI reviewed"
-                            : session.status.charAt(0).toUpperCase() +
+                            : session.status
+                                .charAt(0)
+                                .toUpperCase() +
                               session.status.slice(1)}
                       </span>
                     </div>
 
+                    {/* AI Session Plan */}
                     <SessionAIPlan
                       sessionId={session.id}
                       plan={aiPlan ?? null}
+                    />
+
+                    {/* Session Notes */}
+                    <SessionNotes
+                      sessionId={session.id}
+                      initialNotes={notes}
+                    />
+
+                    {/* AI Session Review */}
+                    <SessionAIReview
+                      sessionId={session.id}
+                      hasNotes={
+                        notes.trim().length > 0
+                      }
+                      review={review}
                     />
                   </div>
                 );
@@ -300,7 +484,9 @@ export default async function TutorPage() {
 
             <span className="text-sm font-medium text-slate-500">
               {students?.length ?? 0}{" "}
-              {students?.length === 1 ? "student" : "students"}
+              {students?.length === 1
+                ? "student"
+                : "students"}
             </span>
           </div>
 
@@ -310,7 +496,8 @@ export default async function TutorPage() {
                 Failed to load students. Please try again.
               </div>
             </div>
-          ) : students && students.length > 0 ? (
+          ) : students &&
+            students.length > 0 ? (
             <div className="divide-y divide-slate-200">
               {students.map((student) => (
                 <div
