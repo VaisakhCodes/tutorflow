@@ -56,8 +56,8 @@ export default function AddStudentForm() {
   }
 
   return (
-    <section className="mb-8 bg-white border border-slate-200 rounded-xl shadow-xs">
-      <div className="px-6 py-5 border-b border-slate-200">
+    <section className="mb-8 overflow-hidden rounded-md border border-slate-200 bg-white">
+      <div className="border-b border-slate-200 px-6 py-5">
         <h2 className="text-lg font-semibold text-slate-900">
           Add Student
         </h2>
@@ -66,11 +66,11 @@ export default function AddStudentForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5 p-6">
         {error && (
           <div
             role="alert"
-            className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700"
+            className="rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-700"
           >
             {error}
           </div>
@@ -79,7 +79,7 @@ export default function AddStudentForm() {
         {success && (
           <div
             role="status"
-            className="rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-700"
+            className="rounded-md bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-700"
           >
             {success}
           </div>
@@ -101,7 +101,7 @@ export default function AddStudentForm() {
               value={name}
               onChange={(event) => setName(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
               placeholder="John Doe"
             />
           </div>
@@ -122,7 +122,7 @@ export default function AddStudentForm() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
               placeholder="student@example.com"
             />
           </div>
@@ -143,7 +143,7 @@ export default function AddStudentForm() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
               placeholder="Enter a temporary password"
             />
           </div>
@@ -163,7 +163,7 @@ export default function AddStudentForm() {
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
               placeholder="Mathematics"
             />
           </div>
@@ -183,7 +183,7 @@ export default function AddStudentForm() {
               value={currentLevel}
               onChange={(event) => setCurrentLevel(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
               placeholder="Grade 10"
             />
           </div>
@@ -203,7 +203,7 @@ export default function AddStudentForm() {
               value={learningGoals}
               onChange={(event) => setLearningGoals(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
               placeholder="Improve algebra and problem solving"
             />
           </div>
@@ -224,7 +224,7 @@ export default function AddStudentForm() {
             value={weakAreas}
             onChange={(event) => setWeakAreas(event.target.value)}
             disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
             placeholder="Fractions, equations, word problems"
           />
         </div>
@@ -233,7 +233,7 @@ export default function AddStudentForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-xs transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isPending ? "Creating student..." : "Create student"}
           </button>
