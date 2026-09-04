@@ -146,7 +146,7 @@ export default async function TutorPage() {
   if (!supabase) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
-        <div className="w-full max-w-md rounded-lg border border-error-border bg-surface p-6 text-center">
+        <div className="ui-surface-elevated w-full max-w-md border-l-4 border-l-error p-6 text-center">
           <h1 className="text-lg font-semibold text-error">
             Supabase is not configured
           </h1>
@@ -368,9 +368,12 @@ export default async function TutorPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-border bg-surface">
+      <header className="border-b-2 border-border bg-surface">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-          <span className="text-xl font-bold tracking-tight text-primary">
+          <span className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-text-primary">
+            <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] bg-primary text-sm font-bold text-primary-foreground">
+              T
+            </span>
             TutorFlow
           </span>
 
@@ -397,7 +400,7 @@ export default async function TutorPage() {
             </span>
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
+          <h1 className="font-serif text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">
             Tutor Dashboard
           </h1>
 
@@ -418,7 +421,7 @@ export default async function TutorPage() {
 
         {/* Sessions */}
         <section className="mt-12">
-          <div className="flex items-end justify-between gap-4 border-b border-border pb-4">
+          <div className="flex items-end justify-between gap-4 border-b-2 border-border pb-4">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-text-primary">
                 Sessions
@@ -442,7 +445,7 @@ export default async function TutorPage() {
             <div className="py-6">
               <div
                 role="alert"
-                className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
+                className="rounded-[var(--radius-sm)] border border-error-border bg-error-background p-4 text-sm text-error"
               >
                 Failed to load sessions. Please try
                 again.
@@ -594,10 +597,10 @@ export default async function TutorPage() {
                         </span>
                       </div>
 
-                      <div className="border-l border-border pl-4 sm:pl-6">
+                      <div className="border-l-2 border-border pl-4 sm:pl-6">
                         {/* Stage 1 — AI plan */}
                         <div className="relative">
-                          <span className="absolute -left-[25px] top-6 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-[11px] font-semibold text-text-secondary sm:-left-[31px]">
+                          <span className="absolute -left-[26px] top-6 flex h-5 w-5 items-center justify-center rounded-full border-2 border-primary bg-surface text-[11px] font-semibold text-primary sm:-left-[32px]">
                             1
                           </span>
 
@@ -609,7 +612,7 @@ export default async function TutorPage() {
 
                         {/* Stage 2 — Notes */}
                         <div className="relative">
-                          <span className="absolute -left-[25px] top-6 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-[11px] font-semibold text-text-secondary sm:-left-[31px]">
+                          <span className="absolute -left-[26px] top-6 flex h-5 w-5 items-center justify-center rounded-full border-2 border-primary bg-surface text-[11px] font-semibold text-primary sm:-left-[32px]">
                             2
                           </span>
 
@@ -621,7 +624,7 @@ export default async function TutorPage() {
 
                         {/* Stage 3 — AI review */}
                         <div className="relative">
-                          <span className="absolute -left-[25px] top-6 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-[11px] font-semibold text-text-secondary sm:-left-[31px]">
+                          <span className="absolute -left-[26px] top-6 flex h-5 w-5 items-center justify-center rounded-full border-2 border-primary bg-surface text-[11px] font-semibold text-primary sm:-left-[32px]">
                             3
                           </span>
 
@@ -636,7 +639,7 @@ export default async function TutorPage() {
 
                         {/* Stage 4 — Homework */}
                         <div className="relative">
-                          <span className="absolute -left-[25px] top-6 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-[11px] font-semibold text-text-secondary sm:-left-[31px]">
+                          <span className="absolute -left-[26px] top-6 flex h-5 w-5 items-center justify-center rounded-full border-2 border-primary bg-surface text-[11px] font-semibold text-primary sm:-left-[32px]">
                             4
                           </span>
 
@@ -722,7 +725,7 @@ export default async function TutorPage() {
                                 )}
                               </div>
                             ) : (
-                              <div className="mt-4 rounded-md border border-dashed border-border-strong bg-surface-muted p-4 text-sm text-text-secondary">
+                              <div className="mt-4 rounded-[var(--radius-sm)] border border-dashed border-border-strong bg-surface-muted p-4 text-sm text-text-secondary">
                                 No homework has been assigned
                                 for this session yet.
                               </div>
@@ -772,7 +775,7 @@ export default async function TutorPage() {
                                 </p>
                               </form>
                             ) : (
-                              <div className="mt-4 rounded-md border border-warning-border bg-warning-background p-4 text-sm text-warning">
+                              <div className="mt-4 rounded-[var(--radius-sm)] border border-warning-border bg-warning-background p-4 text-sm text-warning">
                                 Homework can be assigned
                                 after the session is completed
                                 or AI-reviewed.
@@ -800,8 +803,8 @@ export default async function TutorPage() {
         </section>
 
         {/* Students */}
-        <section className="mt-12 border-t border-border pt-8">
-          <div className="flex items-end justify-between gap-4 border-b border-border pb-4">
+        <section className="mt-12 border-t-2 border-border pt-8">
+          <div className="flex items-end justify-between gap-4 border-b-2 border-border pb-4">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-text-primary">
                 Students
@@ -824,7 +827,7 @@ export default async function TutorPage() {
             <div className="py-6">
               <div
                 role="alert"
-                className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
+                className="rounded-[var(--radius-sm)] border border-error-border bg-error-background p-4 text-sm text-error"
               >
                 Failed to load students. Please try
                 again.
