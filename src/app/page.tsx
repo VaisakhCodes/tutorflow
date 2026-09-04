@@ -27,17 +27,20 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-border bg-surface">
+      <header className="border-b-2 border-border bg-surface">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link
             href="/"
-            className="text-xl font-bold tracking-tight text-primary"
+            className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-text-primary"
             aria-label="TutorFlow home"
           >
+            <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] bg-primary text-sm font-bold text-primary-foreground">
+              T
+            </span>
             TutorFlow
           </Link>
 
-          <span className="text-xs font-medium text-text-muted">
+          <span className="text-xs font-medium uppercase tracking-[0.1em] text-text-muted">
             Tutoring Platform
           </span>
         </div>
@@ -45,41 +48,46 @@ export default function Home() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="mx-auto w-full max-w-6xl px-4 pb-16 pt-20 sm:px-6 sm:pb-20 sm:pt-24 lg:pt-28">
-          <div className="mx-auto max-w-3xl text-center">
-            <span className="ui-badge-info mb-5">
-              Tutoring Platform
-            </span>
+        <section className="mx-auto w-full max-w-6xl px-4 pb-16 pt-16 sm:px-6 sm:pb-20 sm:pt-20 lg:pt-24">
+          <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
+            <div className="max-w-2xl">
+              <span className="ui-badge-warning">Tutoring Platform</span>
 
-            <h1 className="text-4xl font-bold tracking-tight text-text-primary sm:text-5xl lg:text-6xl">
-              TutorFlow
-            </h1>
+              <h1 className="mt-5 font-serif text-5xl font-semibold leading-[1.05] tracking-tight text-text-primary sm:text-6xl lg:text-7xl">
+                TutorFlow
+              </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-text-secondary sm:text-lg sm:leading-8">
-              A simple platform for tutors to manage students, run sessions,
-              and use AI to plan and review lessons.
-            </p>
+              <p className="mt-6 max-w-xl text-base leading-7 text-text-secondary sm:text-lg sm:leading-8">
+                A simple platform for tutors to manage students, run
+                sessions, and use AI to plan and review lessons.
+              </p>
 
-            <div className="mt-8 flex justify-center">
-              <Link
-                href="/login"
-                className="ui-button-primary px-6 py-3"
-              >
-                Get Started
-              </Link>
+              <div className="mt-8 flex">
+                <Link href="/login" className="ui-button-primary px-6 py-3">
+                  Get Started
+                </Link>
+              </div>
+            </div>
+
+            <div className="hidden border-l-2 border-border pl-8 lg:block">
+              <p className="text-sm leading-7 text-text-muted">
+                Built for tutors who want student context, session activity,
+                and lesson planning in one workspace — without the
+                complexity of a generic CRM.
+              </p>
             </div>
           </div>
         </section>
 
         {/* Product capabilities */}
-        <section className="border-t border-border">
-          <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+        <section className="border-t-2 border-border bg-surface-muted">
+          <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
             <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                 Core workflow
               </p>
 
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-text-primary sm:text-3xl">
+              <h2 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">
                 Everything needed for a tutoring session
               </h2>
 
@@ -89,13 +97,13 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="mt-10 grid gap-0 border-y border-border md:grid-cols-3 md:divide-x md:divide-border">
+            <div className="mt-12 grid gap-8 md:grid-cols-3">
               {features.map((feature) => (
                 <article
                   key={feature.number}
-                  className="border-b border-border py-7 md:border-b-0 md:px-7 md:first:pl-0 md:last:pr-0"
+                  className="ui-card border-t-2 border-t-primary px-6 py-7"
                 >
-                  <p className="text-sm font-semibold tracking-wide text-primary">
+                  <p className="font-serif text-3xl font-semibold text-primary">
                     {feature.number}
                   </p>
 
@@ -103,7 +111,7 @@ export default function Home() {
                     {feature.title}
                   </h3>
 
-                  <p className="mt-2 max-w-sm text-sm leading-6 text-text-secondary">
+                  <p className="mt-2 text-sm leading-6 text-text-secondary">
                     {feature.description}
                   </p>
                 </article>
