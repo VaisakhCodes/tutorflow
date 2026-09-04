@@ -65,9 +65,7 @@ type HomeworkRecord = {
   created_at: string;
 };
 
-function normalizeStringArray(
-  value: unknown
-): string[] {
+function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -78,9 +76,7 @@ function normalizeStringArray(
   );
 }
 
-function getSessionStatusLabel(
-  status: string
-): string {
+function getSessionStatusLabel(status: string): string {
   switch (status) {
     case "in_progress":
       return "In progress";
@@ -102,25 +98,31 @@ function getSessionStatusLabel(
   }
 }
 
-function getSessionStatusClasses(
-  status: string
-): string {
+function getSessionStatusClasses(status: string): string {
   switch (status) {
     case "scheduled":
-      return "bg-amber-50 text-amber-700 border border-amber-100";
+      return "ui-badge-warning";
 
     case "in_progress":
-      return "bg-blue-50 text-blue-700 border border-blue-100";
+      return "ui-badge-info";
 
     case "completed":
-      return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+      return "ui-badge-success";
 
     case "ai_reviewed":
-      return "bg-violet-50 text-violet-700 border border-violet-100";
+      return "ui-badge-ai";
 
     default:
-      return "bg-slate-100 text-slate-700 border border-slate-200";
+      return "ui-badge bg-surface-muted text-text-secondary";
   }
+}
+
+function getHomeworkStatusClasses(
+  completed: boolean
+): string {
+  return completed
+    ? "ui-badge-success"
+    : "ui-badge-warning";
 }
 
 export default async function TutorPage() {
@@ -143,13 +145,13 @@ export default async function TutorPage() {
 
   if (!supabase) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white border border-red-200 rounded-xl p-6 max-w-md text-center">
-          <h1 className="text-lg font-semibold text-red-700">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
+        <div className="w-full max-w-md rounded-lg border border-error-border bg-surface p-6 text-center">
+          <h1 className="text-lg font-semibold text-error">
             Supabase is not configured
           </h1>
 
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-text-secondary">
             Please check the environment configuration.
           </p>
         </div>
@@ -229,24 +231,20 @@ export default async function TutorPage() {
       plan.session_id,
       {
         id: plan.id,
-        objectives:
-          normalizeStringArray(
-            plan.objectives
-          ),
-        lesson_outline:
-          normalizeStringArray(
-            plan.lesson_outline
-          ),
-        practice_questions:
-          normalizeStringArray(
-            plan.practice_questions
-          ),
+        objectives: normalizeStringArray(
+          plan.objectives
+        ),
+        lesson_outline: normalizeStringArray(
+          plan.lesson_outline
+        ),
+        practice_questions: normalizeStringArray(
+          plan.practice_questions
+        ),
       },
     ])
   );
 
-  let sessionNotes: SessionNotesRecord[] =
-    [];
+  let sessionNotes: SessionNotesRecord[] = [];
 
   if (sessionIds.length > 0) {
     const {
@@ -269,13 +267,12 @@ export default async function TutorPage() {
     }
   }
 
-  const sessionNotesBySessionId =
-    new Map(
-      sessionNotes.map((note) => [
-        note.session_id,
-        note.notes,
-      ])
-    );
+  const sessionNotesBySessionId = new Map(
+    sessionNotes.map((note) => [
+      note.session_id,
+      note.notes,
+    ])
+  );
 
   let sessionReviews:
     SessionAIReviewRecord[] = [];
@@ -303,18 +300,17 @@ export default async function TutorPage() {
     }
   }
 
-  const sessionReviewsBySessionId =
-    new Map(
-      sessionReviews.map((review) => [
-        review.session_id,
-        {
-          id: review.id,
-          summary: review.summary,
-          next_session_suggestion:
-            review.next_session_suggestion,
-        },
-      ])
-    );
+  const sessionReviewsBySessionId = new Map(
+    sessionReviews.map((review) => [
+      review.session_id,
+      {
+        id: review.id,
+        summary: review.summary,
+        next_session_suggestion:
+          review.next_session_suggestion,
+      },
+    ])
+  );
 
   let homework: HomeworkRecord[] = [];
 
@@ -355,6 +351,7 @@ export default async function TutorPage() {
       ) ?? [];
 
     items.push(homeworkItem);
+
     homeworkBySessionId.set(
       homeworkItem.session_id,
       items
@@ -369,10 +366,11 @@ export default async function TutorPage() {
     })) ?? [];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <span className="text-xl font-bold text-blue-600">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      {/* Header */}
+      <header className="border-b border-border bg-surface">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+          <span className="text-xl font-bold tracking-tight text-primary">
             TutorFlow
           </span>
 
@@ -382,7 +380,7 @@ export default async function TutorPage() {
           >
             <button
               type="submit"
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-md cursor-pointer transition"
+              className="ui-button-ghost"
             >
               Sign Out
             </button>
@@ -390,41 +388,49 @@ export default async function TutorPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-10">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:py-10">
+        {/* Page introduction */}
         <div className="mb-8">
-          <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 mb-4">
-            Server-Side Authorization Passed
+          <div className="mb-3">
+            <span className="ui-badge-success">
+              Authorized
+            </span>
           </div>
 
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
             Tutor Dashboard
           </h1>
 
-          <p className="mt-2 text-slate-600">
-            Manage your students, sessions, and learning profiles.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">
+            Manage your students, sessions, and
+            learning profiles.
           </p>
         </div>
 
-        <AddStudentForm />
+        {/* Primary workflows */}
+        <div className="space-y-8">
+          <AddStudentForm />
 
-        <ScheduleSessionForm
-          students={scheduleStudents}
-        />
+          <ScheduleSessionForm
+            students={scheduleStudents}
+          />
+        </div>
 
         {/* Sessions */}
-        <section className="mb-10">
-          <div className="pb-4 border-b border-slate-200 flex items-center justify-between">
+        <section className="mt-12">
+          <div className="flex items-end justify-between gap-4 border-b border-border pb-4">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-xl font-semibold tracking-tight text-text-primary">
                 Sessions
               </h2>
 
-              <p className="text-sm text-slate-500 mt-1">
-                Your scheduled and active tutoring sessions.
+              <p className="mt-1 text-sm text-text-secondary">
+                Your scheduled and active tutoring
+                sessions.
               </p>
             </div>
 
-            <span className="text-sm font-medium text-slate-500">
+            <span className="shrink-0 text-sm text-text-secondary">
               {sessions.length}{" "}
               {sessions.length === 1
                 ? "session"
@@ -434,12 +440,16 @@ export default async function TutorPage() {
 
           {sessionsError ? (
             <div className="py-6">
-              <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-                Failed to load sessions. Please try again.
+              <div
+                role="alert"
+                className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
+              >
+                Failed to load sessions. Please try
+                again.
               </div>
             </div>
           ) : sessions.length > 0 ? (
-            <div className="divide-y divide-slate-200">
+            <div className="divide-y divide-border">
               {sessions.map((session) => {
                 const sessionStudent =
                   Array.isArray(session.students)
@@ -472,50 +482,46 @@ export default async function TutorPage() {
                   ) ?? [];
 
                 const canManageHomework =
-                  session.status ===
-                    "completed" ||
-                  session.status ===
-                    "ai_reviewed";
+                  session.status === "completed" ||
+                  session.status === "ai_reviewed";
 
                 const canStart =
-                  session.status ===
-                  "scheduled";
+                  session.status === "scheduled";
 
                 const canComplete =
-                  session.status ===
-                  "in_progress";
+                  session.status === "in_progress";
 
-                const nextStatus =
-                  canStart
-                    ? "in_progress"
-                    : canComplete
-                      ? "completed"
-                      : null;
+                const nextStatus = canStart
+                  ? "in_progress"
+                  : canComplete
+                    ? "completed"
+                    : null;
 
                 return (
-                  <div
+                  <article
                     key={session.id}
-                    className="py-6 hover:bg-slate-50/60 transition"
+                    className="py-6 transition-colors hover:bg-surface-muted/50"
                   >
+                    {/* Session summary */}
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-semibold text-slate-900">
+                          <h3 className="text-base font-semibold text-text-primary">
                             {sessionStudent?.name ??
                               "Unknown student"}
                           </h3>
 
-                          <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs">
+                          <span className="ui-badge-info">
                             {sessionStudent?.subject ??
                               "Unknown subject"}
                           </span>
                         </div>
 
-                        <p className="mt-2 text-sm font-medium text-slate-800">
+                        <p className="mt-2 text-sm font-medium text-text-primary">
                           {session.topic}
                         </p>
 
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-text-secondary">
                           {scheduledDate.toLocaleString(
                             [],
                             {
@@ -529,9 +535,9 @@ export default async function TutorPage() {
                       </div>
 
                       <span
-                        className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getSessionStatusClasses(
+                        className={getSessionStatusClasses(
                           session.status
-                        )}`}
+                        )}
                       >
                         {getSessionStatusLabel(
                           session.status
@@ -539,9 +545,9 @@ export default async function TutorPage() {
                       </span>
                     </div>
 
-                    {/* Session status controls */}
+                    {/* Session action */}
                     {nextStatus ? (
-                      <div className="mt-4 flex justify-end">
+                      <div className="mt-4 flex justify-start md:justify-end">
                         <form
                           action={
                             updateSessionStatusAction
@@ -561,7 +567,7 @@ export default async function TutorPage() {
 
                           <button
                             type="submit"
-                            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            className="ui-button-primary"
                           >
                             {canStart
                               ? "Start Session"
@@ -571,173 +577,178 @@ export default async function TutorPage() {
                       </div>
                     ) : null}
 
-                    {/* AI Session Plan */}
-                    <SessionAIPlan
-                      sessionId={session.id}
-                      plan={aiPlan ?? null}
-                    />
+                    {/* Expanded session workflow */}
+                    <div className="mt-1">
+                      <SessionAIPlan
+                        sessionId={session.id}
+                        plan={aiPlan ?? null}
+                      />
 
-                    {/* Session Notes */}
-                    <SessionNotes
-                      sessionId={session.id}
-                      initialNotes={notes}
-                    />
+                      <SessionNotes
+                        sessionId={session.id}
+                        initialNotes={notes}
+                      />
 
-                    {/* AI Session Review */}
-                    <SessionAIReview
-                      sessionId={session.id}
-                      hasNotes={
-                        notes.trim().length > 0
-                      }
-                      review={review}
-                    />
+                      <SessionAIReview
+                        sessionId={session.id}
+                        hasNotes={
+                          notes.trim().length > 0
+                        }
+                        review={review}
+                      />
 
-                    {/* Homework */}
-                    <section className="mt-6 border-t border-slate-200 pt-5">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <h4 className="text-base font-semibold text-slate-900">
-                            Homework
-                          </h4>
+                      {/* Homework */}
+                      <section className="mt-6 border-t border-border pt-5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <h4 className="text-base font-semibold text-text-primary">
+                              Homework
+                            </h4>
 
-                          <p className="mt-1 text-sm text-slate-500">
-                            Assign practice for this completed session
-                            and track student completion.
-                          </p>
-                        </div>
-
-                        <span className="text-sm font-medium text-slate-500">
-                          {sessionHomework.length}{" "}
-                          {sessionHomework.length === 1
-                            ? "task"
-                            : "tasks"}
-                        </span>
-                      </div>
-
-                      {sessionHomework.length > 0 ? (
-                        <div className="mt-4 space-y-3">
-                          {sessionHomework.map(
-                            (homeworkItem) => (
-                              <div
-                                key={homeworkItem.id}
-                                className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-start sm:justify-between"
-                              >
-                                <div className="min-w-0">
-                                  <p
-                                    className={`text-sm leading-6 ${
-                                      homeworkItem.completed
-                                        ? "text-slate-500 line-through"
-                                        : "text-slate-800"
-                                    }`}
-                                  >
-                                    {homeworkItem.task}
-                                  </p>
-
-                                  <span
-                                    className={`mt-2 inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                      homeworkItem.completed
-                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                        : "bg-amber-50 text-amber-700 border border-amber-100"
-                                    }`}
-                                  >
-                                    {homeworkItem.completed
-                                      ? "Completed by student"
-                                      : "Pending"}
-                                  </span>
-                                </div>
-
-                                <form
-                                  action={
-                                    deleteHomeworkAction
-                                  }
-                                >
-                                  <input
-                                    type="hidden"
-                                    name="homeworkId"
-                                    value={
-                                      homeworkItem.id
-                                    }
-                                  />
-
-                                  <button
-                                    type="submit"
-                                    className="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
-                                  >
-                                    Delete
-                                  </button>
-                                </form>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      ) : (
-                        <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                          No homework has been assigned for this
-                          session yet.
-                        </div>
-                      )}
-
-                      {canManageHomework ? (
-                        <form
-                          action={
-                            createHomeworkAction
-                          }
-                          className="mt-4 rounded-lg border border-slate-200 bg-white p-4"
-                        >
-                          <input
-                            type="hidden"
-                            name="sessionId"
-                            value={session.id}
-                          />
-
-                          <label
-                            htmlFor={`homework-${session.id}`}
-                            className="block text-sm font-medium text-slate-700"
-                          >
-                            Add homework task
-                          </label>
-
-                          <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-                            <textarea
-                              id={`homework-${session.id}`}
-                              name="task"
-                              required
-                              maxLength={1000}
-                              rows={3}
-                              placeholder="e.g. Complete 10 practice questions on today's topic."
-                              className="min-h-24 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                            />
-
-                            <button
-                              type="submit"
-                              className="self-start rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
-                            >
-                              Add homework
-                            </button>
+                            <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
+                              Assign practice for this
+                              completed session and
+                              track student completion.
+                            </p>
                           </div>
 
-                          <p className="mt-2 text-xs text-slate-400">
-                            Up to 1,000 characters.
-                          </p>
-                        </form>
-                      ) : (
-                        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                          Homework can be assigned after the
-                          session is completed or AI-reviewed.
+                          <span className="shrink-0 text-sm text-text-secondary">
+                            {sessionHomework.length}{" "}
+                            {sessionHomework.length ===
+                            1
+                              ? "task"
+                              : "tasks"}
+                          </span>
                         </div>
-                      )}
-                    </section>
-                  </div>
+
+                        {sessionHomework.length > 0 ? (
+                          <div className="mt-4 divide-y divide-border border-y border-border">
+                            {sessionHomework.map(
+                              (homeworkItem) => (
+                                <div
+                                  key={
+                                    homeworkItem.id
+                                  }
+                                  className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between"
+                                >
+                                  <div className="min-w-0">
+                                    <p
+                                      className={`text-sm leading-6 ${
+                                        homeworkItem.completed
+                                          ? "text-text-muted line-through"
+                                          : "text-text-primary"
+                                      }`}
+                                    >
+                                      {
+                                        homeworkItem.task
+                                      }
+                                    </p>
+
+                                    <span
+                                      className={`${getHomeworkStatusClasses(
+                                        homeworkItem.completed
+                                      )} mt-2`}
+                                    >
+                                      {homeworkItem.completed
+                                        ? "Completed by student"
+                                        : "Pending"}
+                                    </span>
+                                  </div>
+
+                                  <form
+                                    action={
+                                      deleteHomeworkAction
+                                    }
+                                  >
+                                    <input
+                                      type="hidden"
+                                      name="homeworkId"
+                                      value={
+                                        homeworkItem.id
+                                      }
+                                    />
+
+                                    <button
+                                      type="submit"
+                                      className="ui-button-danger"
+                                    >
+                                      Delete
+                                    </button>
+                                  </form>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          <div className="mt-4 rounded-md border border-dashed border-border-strong bg-surface-muted p-4 text-sm text-text-secondary">
+                            No homework has been assigned
+                            for this session yet.
+                          </div>
+                        )}
+
+                        {canManageHomework ? (
+                          <form
+                            action={
+                              createHomeworkAction
+                            }
+                            className="mt-4 border-t border-border pt-4"
+                          >
+                            <input
+                              type="hidden"
+                              name="sessionId"
+                              value={session.id}
+                            />
+
+                            <label
+                              htmlFor={`homework-${session.id}`}
+                              className="block text-sm font-medium text-text-primary"
+                            >
+                              Add homework task
+                            </label>
+
+                            <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                              <textarea
+                                id={`homework-${session.id}`}
+                                name="task"
+                                required
+                                maxLength={1000}
+                                rows={3}
+                                placeholder="e.g. Complete 10 practice questions on today's topic."
+                                className="ui-control min-h-24 resize-y"
+                              />
+
+                              <button
+                                type="submit"
+                                className="ui-button-secondary self-start sm:shrink-0"
+                              >
+                                Add homework
+                              </button>
+                            </div>
+
+                            <p className="mt-2 text-xs text-text-muted">
+                              Up to 1,000 characters.
+                            </p>
+                          </form>
+                        ) : (
+                          <div className="mt-4 rounded-md border border-warning-border bg-warning-background p-4 text-sm text-warning">
+                            Homework can be assigned
+                            after the session is completed
+                            or AI-reviewed.
+                          </div>
+                        )}
+                      </section>
+                    </div>
+                  </article>
                 );
               })}
             </div>
           ) : (
-            <div className="py-10 text-center">
-              <h3 className="text-base font-semibold text-slate-900">
+            <div className="py-10">
+              <h3 className="text-base font-semibold text-text-primary">
                 No sessions yet
               </h3>
 
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-text-secondary">
                 Scheduled sessions will appear here.
               </p>
             </div>
@@ -745,19 +756,19 @@ export default async function TutorPage() {
         </section>
 
         {/* Students */}
-        <section className="mt-10 border-t border-slate-200 pt-8">
-          <div className="pb-4 border-b border-slate-200 flex items-center justify-between">
+        <section className="mt-12 border-t border-border pt-8">
+          <div className="flex items-end justify-between gap-4 border-b border-border pb-4">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-xl font-semibold tracking-tight text-text-primary">
                 Students
               </h2>
 
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="mt-1 text-sm text-text-secondary">
                 Students assigned to your tutor account.
               </p>
             </div>
 
-            <span className="text-sm font-medium text-slate-500">
+            <span className="shrink-0 text-sm text-text-secondary">
               {students?.length ?? 0}{" "}
               {students?.length === 1
                 ? "student"
@@ -767,67 +778,71 @@ export default async function TutorPage() {
 
           {studentsError ? (
             <div className="py-6">
-              <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
-                Failed to load students. Please try again.
+              <div
+                role="alert"
+                className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
+              >
+                Failed to load students. Please try
+                again.
               </div>
             </div>
           ) : students &&
             students.length > 0 ? (
-            <div className="divide-y divide-slate-200">
+            <div className="divide-y divide-border">
               {students.map((student) => (
-                <div
+                <article
                   key={student.id}
-                  className="py-6 hover:bg-slate-50/60 transition"
+                  className="py-6"
                 >
-                  <div className="flex items-start justify-between gap-6">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
-                      <h3 className="text-base font-semibold text-slate-900">
+                      <h3 className="text-base font-semibold text-text-primary">
                         {student.name}
                       </h3>
 
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                        <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <span className="ui-badge-info">
                           {student.subject}
                         </span>
 
-                        <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                        <span className="ui-badge bg-surface-muted text-text-secondary">
                           {student.current_level}
                         </span>
                       </div>
+
+                      <div className="mt-5">
+                        <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+                          Weak areas
+                        </p>
+
+                        <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
+                          {student.weak_areas}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="text-right max-w-sm">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                    <div className="max-w-xl lg:text-right">
+                      <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
                         Learning goals
                       </p>
 
-                      <p className="mt-1 text-sm text-slate-600">
+                      <p className="mt-1 text-sm leading-6 text-text-secondary">
                         {student.learning_goals}
                       </p>
                     </div>
                   </div>
-
-                  <div className="mt-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                      Weak areas
-                    </p>
-
-                    <p className="mt-1 text-sm text-slate-600">
-                      {student.weak_areas}
-                    </p>
-                  </div>
-                </div>
+                </article>
               ))}
             </div>
           ) : (
-            <div className="py-10 text-center">
-              <h3 className="text-base font-semibold text-slate-900">
+            <div className="py-10">
+              <h3 className="text-base font-semibold text-text-primary">
                 No students yet
               </h3>
 
-              <p className="mt-2 text-sm text-slate-500">
-                Student accounts and profiles will appear here once
-                created.
+              <p className="mt-2 text-sm text-text-secondary">
+                Student accounts and profiles will appear
+                here once created.
               </p>
             </div>
           )}
