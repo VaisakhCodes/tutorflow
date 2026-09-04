@@ -500,10 +500,10 @@ export default async function TutorPage() {
                 return (
                   <article
                     key={session.id}
-                    className="py-6 transition-colors hover:bg-surface-muted/50"
+                    className="py-6"
                   >
                     {/* Session summary */}
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-base font-semibold text-text-primary">
@@ -534,164 +534,22 @@ export default async function TutorPage() {
                         </p>
                       </div>
 
-                      <span
-                        className={getSessionStatusClasses(
-                          session.status
-                        )}
-                      >
-                        {getSessionStatusLabel(
-                          session.status
-                        )}
-                      </span>
-                    </div>
-
-                    {/* Session action */}
-                    {nextStatus ? (
-                      <div className="mt-4 flex justify-start md:justify-end">
-                        <form
-                          action={
-                            updateSessionStatusAction
-                          }
+                      <div className="flex shrink-0 flex-col items-start gap-3 md:items-end">
+                        <span
+                          className={getSessionStatusClasses(
+                            session.status
+                          )}
                         >
-                          <input
-                            type="hidden"
-                            name="sessionId"
-                            value={session.id}
-                          />
+                          {getSessionStatusLabel(
+                            session.status
+                          )}
+                        </span>
 
-                          <input
-                            type="hidden"
-                            name="nextStatus"
-                            value={nextStatus}
-                          />
-
-                          <button
-                            type="submit"
-                            className="ui-button-primary"
-                          >
-                            {canStart
-                              ? "Start Session"
-                              : "Complete Session"}
-                          </button>
-                        </form>
-                      </div>
-                    ) : null}
-
-                    {/* Expanded session workflow */}
-                    <div className="mt-1">
-                      <SessionAIPlan
-                        sessionId={session.id}
-                        plan={aiPlan ?? null}
-                      />
-
-                      <SessionNotes
-                        sessionId={session.id}
-                        initialNotes={notes}
-                      />
-
-                      <SessionAIReview
-                        sessionId={session.id}
-                        hasNotes={
-                          notes.trim().length > 0
-                        }
-                        review={review}
-                      />
-
-                      {/* Homework */}
-                      <section className="mt-6 border-t border-border pt-5">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div>
-                            <h4 className="text-base font-semibold text-text-primary">
-                              Homework
-                            </h4>
-
-                            <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
-                              Assign practice for this
-                              completed session and
-                              track student completion.
-                            </p>
-                          </div>
-
-                          <span className="shrink-0 text-sm text-text-secondary">
-                            {sessionHomework.length}{" "}
-                            {sessionHomework.length ===
-                            1
-                              ? "task"
-                              : "tasks"}
-                          </span>
-                        </div>
-
-                        {sessionHomework.length > 0 ? (
-                          <div className="mt-4 divide-y divide-border border-y border-border">
-                            {sessionHomework.map(
-                              (homeworkItem) => (
-                                <div
-                                  key={
-                                    homeworkItem.id
-                                  }
-                                  className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between"
-                                >
-                                  <div className="min-w-0">
-                                    <p
-                                      className={`text-sm leading-6 ${
-                                        homeworkItem.completed
-                                          ? "text-text-muted line-through"
-                                          : "text-text-primary"
-                                      }`}
-                                    >
-                                      {
-                                        homeworkItem.task
-                                      }
-                                    </p>
-
-                                    <span
-                                      className={`${getHomeworkStatusClasses(
-                                        homeworkItem.completed
-                                      )} mt-2`}
-                                    >
-                                      {homeworkItem.completed
-                                        ? "Completed by student"
-                                        : "Pending"}
-                                    </span>
-                                  </div>
-
-                                  <form
-                                    action={
-                                      deleteHomeworkAction
-                                    }
-                                  >
-                                    <input
-                                      type="hidden"
-                                      name="homeworkId"
-                                      value={
-                                        homeworkItem.id
-                                      }
-                                    />
-
-                                    <button
-                                      type="submit"
-                                      className="ui-button-danger"
-                                    >
-                                      Delete
-                                    </button>
-                                  </form>
-                                </div>
-                              )
-                            )}
-                          </div>
-                        ) : (
-                          <div className="mt-4 rounded-md border border-dashed border-border-strong bg-surface-muted p-4 text-sm text-text-secondary">
-                            No homework has been assigned
-                            for this session yet.
-                          </div>
-                        )}
-
-                        {canManageHomework ? (
+                        {nextStatus ? (
                           <form
                             action={
-                              createHomeworkAction
+                              updateSessionStatusAction
                             }
-                            className="mt-4 border-t border-border pt-4"
                           >
                             <input
                               type="hidden"
@@ -699,44 +557,230 @@ export default async function TutorPage() {
                               value={session.id}
                             />
 
-                            <label
-                              htmlFor={`homework-${session.id}`}
-                              className="block text-sm font-medium text-text-primary"
+                            <input
+                              type="hidden"
+                              name="nextStatus"
+                              value={nextStatus}
+                            />
+
+                            <button
+                              type="submit"
+                              className="ui-button-primary"
                             >
-                              Add homework task
-                            </label>
+                              {canStart
+                                ? "Start Session"
+                                : "Complete Session"}
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
+                    </div>
 
-                            <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-                              <textarea
-                                id={`homework-${session.id}`}
-                                name="task"
-                                required
-                                maxLength={1000}
-                                rows={3}
-                                placeholder="e.g. Complete 10 practice questions on today's topic."
-                                className="ui-control min-h-24 resize-y"
-                              />
+                    {/* Session workflow */}
+                    <div className="mt-7">
+                      <div className="mb-4 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-[0.12em] text-text-muted">
+                            Session workflow
+                          </p>
 
-                              <button
-                                type="submit"
-                                className="ui-button-secondary self-start sm:shrink-0"
-                              >
-                                Add homework
-                              </button>
+                          <p className="mt-1 text-sm text-text-secondary">
+                            Plan, record, review, then assign follow-up work.
+                          </p>
+                        </div>
+
+                        <span className="shrink-0 text-xs text-text-muted">
+                          4 stages
+                        </span>
+                      </div>
+
+                      <div className="border-l border-border pl-4 sm:pl-6">
+                        {/* Stage 1 — AI plan */}
+                        <div className="relative">
+                          <span className="absolute -left-[25px] top-6 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-[11px] font-semibold text-text-secondary sm:-left-[31px]">
+                            1
+                          </span>
+
+                          <SessionAIPlan
+                            sessionId={session.id}
+                            plan={aiPlan ?? null}
+                          />
+                        </div>
+
+                        {/* Stage 2 — Notes */}
+                        <div className="relative">
+                          <span className="absolute -left-[25px] top-6 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-[11px] font-semibold text-text-secondary sm:-left-[31px]">
+                            2
+                          </span>
+
+                          <SessionNotes
+                            sessionId={session.id}
+                            initialNotes={notes}
+                          />
+                        </div>
+
+                        {/* Stage 3 — AI review */}
+                        <div className="relative">
+                          <span className="absolute -left-[25px] top-6 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-[11px] font-semibold text-text-secondary sm:-left-[31px]">
+                            3
+                          </span>
+
+                          <SessionAIReview
+                            sessionId={session.id}
+                            hasNotes={
+                              notes.trim().length > 0
+                            }
+                            review={review}
+                          />
+                        </div>
+
+                        {/* Stage 4 — Homework */}
+                        <div className="relative">
+                          <span className="absolute -left-[25px] top-6 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-surface text-[11px] font-semibold text-text-secondary sm:-left-[31px]">
+                            4
+                          </span>
+
+                          <section className="mt-5 border-t border-border pt-5">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div>
+                                <h4 className="text-base font-semibold text-text-primary">
+                                  Homework
+                                </h4>
+
+                                <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
+                                  Assign practice for this
+                                  completed session and
+                                  track student completion.
+                                </p>
+                              </div>
+
+                              <span className="shrink-0 text-sm text-text-secondary">
+                                {sessionHomework.length}{" "}
+                                {sessionHomework.length ===
+                                1
+                                  ? "task"
+                                  : "tasks"}
+                              </span>
                             </div>
 
-                            <p className="mt-2 text-xs text-text-muted">
-                              Up to 1,000 characters.
-                            </p>
-                          </form>
-                        ) : (
-                          <div className="mt-4 rounded-md border border-warning-border bg-warning-background p-4 text-sm text-warning">
-                            Homework can be assigned
-                            after the session is completed
-                            or AI-reviewed.
-                          </div>
-                        )}
-                      </section>
+                            {sessionHomework.length > 0 ? (
+                              <div className="mt-4 divide-y divide-border border-y border-border">
+                                {sessionHomework.map(
+                                  (homeworkItem) => (
+                                    <div
+                                      key={
+                                        homeworkItem.id
+                                      }
+                                      className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between"
+                                    >
+                                      <div className="min-w-0">
+                                        <p
+                                          className={`text-sm leading-6 ${
+                                            homeworkItem.completed
+                                              ? "text-text-muted line-through"
+                                              : "text-text-primary"
+                                          }`}
+                                        >
+                                          {
+                                            homeworkItem.task
+                                          }
+                                        </p>
+
+                                        <span
+                                          className={`${getHomeworkStatusClasses(
+                                            homeworkItem.completed
+                                          )} mt-2`}
+                                        >
+                                          {homeworkItem.completed
+                                            ? "Completed by student"
+                                            : "Pending"}
+                                        </span>
+                                      </div>
+
+                                      <form
+                                        action={
+                                          deleteHomeworkAction
+                                        }
+                                      >
+                                        <input
+                                          type="hidden"
+                                          name="homeworkId"
+                                          value={
+                                            homeworkItem.id
+                                          }
+                                        />
+
+                                        <button
+                                          type="submit"
+                                          className="ui-button-danger"
+                                        >
+                                          Delete
+                                        </button>
+                                      </form>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            ) : (
+                              <div className="mt-4 rounded-md border border-dashed border-border-strong bg-surface-muted p-4 text-sm text-text-secondary">
+                                No homework has been assigned
+                                for this session yet.
+                              </div>
+                            )}
+
+                            {canManageHomework ? (
+                              <form
+                                action={
+                                  createHomeworkAction
+                                }
+                                className="mt-4 border-t border-border pt-4"
+                              >
+                                <input
+                                  type="hidden"
+                                  name="sessionId"
+                                  value={session.id}
+                                />
+
+                                <label
+                                  htmlFor={`homework-${session.id}`}
+                                  className="block text-sm font-medium text-text-primary"
+                                >
+                                  Add homework task
+                                </label>
+
+                                <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                                  <textarea
+                                    id={`homework-${session.id}`}
+                                    name="task"
+                                    required
+                                    maxLength={1000}
+                                    rows={3}
+                                    placeholder="e.g. Complete 10 practice questions on today's topic."
+                                    className="ui-control min-h-24 resize-y"
+                                  />
+
+                                  <button
+                                    type="submit"
+                                    className="ui-button-secondary self-start sm:shrink-0"
+                                  >
+                                    Add homework
+                                  </button>
+                                </div>
+
+                                <p className="mt-2 text-xs text-text-muted">
+                                  Up to 1,000 characters.
+                                </p>
+                              </form>
+                            ) : (
+                              <div className="mt-4 rounded-md border border-warning-border bg-warning-background p-4 text-sm text-warning">
+                                Homework can be assigned
+                                after the session is completed
+                                or AI-reviewed.
+                              </div>
+                            )}
+                          </section>
+                        </div>
+                      </div>
                     </div>
                   </article>
                 );
