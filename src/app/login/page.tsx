@@ -149,12 +149,17 @@ export default function LoginPage() {
   if (checkingAuth) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background px-4">
-        <div
-          role="status"
-          aria-live="polite"
-          className="text-sm text-text-secondary"
-        >
-          Checking authentication status...
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-sm)] bg-primary font-serif text-sm font-bold text-primary-foreground">
+            T
+          </div>
+          <div
+            role="status"
+            aria-live="polite"
+            className="text-sm text-text-secondary"
+          >
+            Checking authentication status...
+          </div>
         </div>
       </main>
     );
@@ -165,11 +170,11 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+          <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-[var(--radius-sm)] bg-primary font-serif text-base font-bold text-primary-foreground">
             T
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
+          <h1 className="font-serif text-3xl font-semibold tracking-tight text-text-primary">
             TutorFlow
           </h1>
 
@@ -179,14 +184,14 @@ export default function LoginPage() {
         </div>
 
         {/* Login surface */}
-        <section className="overflow-hidden rounded-lg border border-border bg-surface">
-          <div className="border-t-2 border-primary px-6 py-6 sm:px-8">
+        <section className="ui-surface-elevated overflow-hidden border-l-4 border-l-primary">
+          <div className="px-6 py-7 sm:px-8">
             {(!isConfigured || error) && (
               <div className="mb-6 space-y-3">
                 {!isConfigured && (
                   <div
                     role="alert"
-                    className="rounded-md border border-warning-border bg-warning-background p-4 text-sm text-warning"
+                    className="rounded-[var(--radius-sm)] border border-warning-border bg-warning-background p-4 text-sm text-warning"
                   >
                     <p className="font-semibold">
                       Authentication is not configured.
@@ -194,7 +199,7 @@ export default function LoginPage() {
 
                     <p className="mt-1.5 leading-6">
                       Configure your{" "}
-                      <code className="rounded bg-yellow-100 px-1 py-0.5 font-mono text-xs">
+                      <code className="rounded bg-surface px-1 py-0.5 font-mono text-xs">
                         .env.local
                       </code>{" "}
                       file with the required Supabase
@@ -207,7 +212,7 @@ export default function LoginPage() {
                   <div
                     role="alert"
                     aria-live="assertive"
-                    className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
+                    className="rounded-[var(--radius-sm)] border border-error-border bg-error-background p-4 text-sm text-error"
                   >
                     {error}
                   </div>
