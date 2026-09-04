@@ -71,7 +71,7 @@ export default function SessionAIReview({
         </div>
 
         {review ? (
-          <div className="rounded-lg border border-border bg-surface p-5">
+          <div className="rounded-[var(--radius-md)] border border-l-4 border-border border-l-ai bg-surface p-5">
             <div>
               <h5 className="text-sm font-semibold text-text-primary">
                 Session Summary
@@ -104,7 +104,7 @@ export default function SessionAIReview({
             </button>
           </div>
         ) : (
-          <div className="rounded-lg border border-border bg-surface-muted p-5">
+          <div className="rounded-[var(--radius-md)] border border-dashed border-border-strong bg-surface-muted p-5">
             <p className="text-sm text-text-secondary">
               {hasNotes
                 ? "Use the session notes to generate a personalized AI review."
@@ -125,7 +125,7 @@ export default function SessionAIReview({
         )}
 
         {error && (
-          <div className="rounded-md border border-error-border bg-error-background px-4 py-3 text-sm text-error">
+          <div className="rounded-[var(--radius-sm)] border border-error-border bg-error-background px-4 py-3 text-sm text-error">
             {error}
           </div>
         )}
