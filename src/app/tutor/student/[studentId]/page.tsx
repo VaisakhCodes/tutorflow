@@ -2,6 +2,7 @@ import {
   createClient,
   getAuthRole,
 } from "@/lib/supabase/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import ProgressAISummary from "./progress-ai-summary";
 
@@ -19,17 +20,22 @@ type StudentProgressPageProps = {
 };
 
 function formatSessionStatus(status: string): string {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case "scheduled":
       return "Scheduled";
+
     case "in_progress":
       return "In progress";
+
     case "completed":
       return "Completed";
+
     case "ai_reviewed":
       return "AI reviewed";
+
     case "cancelled":
       return "Cancelled";
+
     default:
       return (
         status.charAt(0).toUpperCase() +
@@ -39,24 +45,24 @@ function formatSessionStatus(status: string): string {
 }
 
 function getStatusClasses(status: string): string {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case "scheduled":
-      return "bg-amber-50 text-amber-700 border-amber-100";
+      return "ui-badge-warning";
 
     case "in_progress":
-      return "bg-blue-50 text-blue-700 border-blue-100";
+      return "ui-badge-info";
 
     case "completed":
-      return "bg-emerald-50 text-emerald-700 border-emerald-100";
+      return "ui-badge-success";
 
     case "ai_reviewed":
-      return "bg-violet-50 text-violet-700 border-violet-100";
+      return "ui-badge-ai";
 
     case "cancelled":
-      return "bg-red-50 text-red-700 border-red-100";
+      return "ui-badge-error";
 
     default:
-      return "bg-slate-100 text-slate-700 border-slate-200";
+      return "ui-badge bg-surface-muted text-text-secondary";
   }
 }
 
@@ -84,13 +90,13 @@ export default async function StudentProgressPage({
 
   if (!supabase) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-xl border border-red-200 bg-white p-6 text-center">
-          <h1 className="text-lg font-semibold text-red-700">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
+        <div className="w-full max-w-md rounded-lg border border-error-border bg-surface p-6 text-center">
+          <h1 className="text-lg font-semibold text-error">
             Supabase is not configured
           </h1>
 
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-text-secondary">
             Please check the environment configuration.
           </p>
         </div>
@@ -144,12 +150,17 @@ export default async function StudentProgressPage({
     (sessions ?? []) as SessionRecord[];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <span className="text-xl font-bold text-blue-600">
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Header */}
+      <header className="border-b border-border bg-surface">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+          <Link
+            href="/tutor"
+            className="text-xl font-bold tracking-tight text-primary"
+            aria-label="TutorFlow tutor dashboard"
+          >
             TutorFlow
-          </span>
+          </Link>
 
           <form
             action="/auth/logout"
@@ -157,7 +168,7 @@ export default async function StudentProgressPage({
           >
             <button
               type="submit"
-              className="cursor-pointer rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200"
+              className="ui-button-ghost"
             >
               Sign Out
             </button>
@@ -165,80 +176,81 @@ export default async function StudentProgressPage({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-10">
-        <div className="mb-6">
-          <a
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
+        {/* Back navigation */}
+        <div className="mb-7">
+          <Link
             href="/tutor"
-            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            className="text-sm font-medium text-primary transition hover:text-primary-hover"
           >
             ← Back to Tutor Dashboard
-          </a>
+          </Link>
         </div>
 
+        {/* Page introduction */}
         <div className="mb-8">
-          <div className="mb-4 inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+          <span className="ui-badge-info mb-3">
             Student Progress
-          </div>
+          </span>
 
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
             {student.name}
           </h1>
 
-          <p className="mt-2 text-slate-600">
-            Track learning progress and previous tutoring
-            sessions.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">
+            Track learning progress and previous tutoring sessions.
           </p>
         </div>
 
         {/* Student profile */}
-        <section className="mb-8 rounded-lg border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 px-6 py-5">
-            <h2 className="text-lg font-semibold text-slate-900">
+        <section className="mb-10 overflow-hidden rounded-lg border border-border bg-surface">
+          <div className="border-b border-border px-6 py-5">
+            <h2 className="text-lg font-semibold text-text-primary">
               Student Profile
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-text-secondary">
               Current learning profile and goals.
             </p>
           </div>
 
-          <div className="grid gap-6 px-6 py-6 md:grid-cols-2">
+          <div className="grid gap-x-10 gap-y-7 px-6 py-6 md:grid-cols-2">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
                 Subject
               </p>
 
-              <p className="mt-1 text-sm font-medium text-slate-900">
+              <p className="mt-1.5 text-sm font-medium text-text-primary">
                 {student.subject}
               </p>
             </div>
 
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
                 Current level
               </p>
 
-              <p className="mt-1 text-sm font-medium text-slate-900">
+              <p className="mt-1.5 text-sm font-medium text-text-primary">
                 {student.current_level}
               </p>
             </div>
 
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
                 Learning goals
               </p>
 
-              <p className="mt-1 text-sm leading-6 text-slate-700">
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-text-secondary">
                 {student.learning_goals}
               </p>
             </div>
 
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
                 Weak areas
               </p>
 
-              <p className="mt-1 text-sm leading-6 text-slate-700">
+              <p className="mt-1.5 max-w-2xl text-sm leading-6 text-text-secondary">
                 {student.weak_areas}
               </p>
             </div>
@@ -249,19 +261,19 @@ export default async function StudentProgressPage({
         <ProgressAISummary studentId={student.id} />
 
         {/* Session history */}
-        <section className="rounded-lg border border-slate-200 bg-white">
-          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+        <section className="mt-10">
+          <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-xl font-semibold tracking-tight text-text-primary">
                 Session History
               </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-text-secondary">
                 Sessions for this student in chronological order.
               </p>
             </div>
 
-            <span className="text-sm font-medium text-slate-500">
+            <span className="text-sm text-text-secondary sm:shrink-0">
               {sessionRecords.length}{" "}
               {sessionRecords.length === 1
                 ? "session"
@@ -270,31 +282,33 @@ export default async function StudentProgressPage({
           </div>
 
           {sessionsError ? (
-            <div className="p-6">
-              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                Failed to load session history. Please try
-                again.
+            <div className="py-6">
+              <div
+                role="alert"
+                className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
+              >
+                Failed to load session history. Please try again.
               </div>
             </div>
           ) : sessionRecords.length > 0 ? (
-            <div className="divide-y divide-slate-200">
+            <div className="divide-y divide-border">
               {sessionRecords.map((session) => {
                 const scheduledDate = new Date(
                   session.scheduled_at
                 );
 
                 return (
-                  <div
+                  <article
                     key={session.id}
-                    className="px-6 py-5 transition hover:bg-slate-50"
+                    className="py-5"
                   >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <h3 className="text-base font-semibold text-slate-900">
+                        <h3 className="text-base font-semibold text-text-primary">
                           {session.topic}
                         </h3>
 
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-text-secondary">
                           {scheduledDate.toLocaleString(
                             [],
                             {
@@ -306,28 +320,27 @@ export default async function StudentProgressPage({
                       </div>
 
                       <span
-                        className={`inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusClasses(
+                        className={`${getStatusClasses(
                           session.status
-                        )}`}
+                        )} shrink-0`}
                       >
                         {formatSessionStatus(
                           session.status
                         )}
                       </span>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
           ) : (
-            <div className="p-10 text-center">
-              <h3 className="text-base font-semibold text-slate-900">
+            <div className="border-b border-border py-10">
+              <h3 className="text-base font-semibold text-text-primary">
                 No sessions yet
               </h3>
 
-              <p className="mt-2 text-sm text-slate-500">
-                Sessions for this student will appear here once
-                scheduled.
+              <p className="mt-2 max-w-xl text-sm leading-6 text-text-secondary">
+                Sessions for this student will appear here once scheduled.
               </p>
             </div>
           )}
