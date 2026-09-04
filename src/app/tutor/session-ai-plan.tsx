@@ -40,46 +40,44 @@ export default function SessionAIPlan({
   }
 
   return (
-    <div className="mt-5 border-t border-slate-200 pt-5">
+    <div className="mt-5 border-t border-border pt-5">
       {!plan ? (
         <>
           <button
             type="button"
             onClick={handleGenerate}
             disabled={isPending}
-            className="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="ui-button-secondary"
           >
             {isPending ? "Generating AI Plan..." : "Generate AI Plan"}
           </button>
 
           {error && (
-            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="mt-3 rounded-md border border-error-border bg-error-background p-3 text-sm text-error">
               {error}
             </div>
           )}
         </>
       ) : (
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="rounded-lg border border-border bg-surface p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h4 className="text-base font-semibold text-slate-900">
+              <h4 className="text-base font-semibold text-text-primary">
                 AI Session Plan
               </h4>
 
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-text-secondary">
                 Personalized from the student profile and previous
                 sessions.
               </p>
             </div>
 
-            <span className="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
-              AI Ready
-            </span>
+            <span className="ui-badge-ai">AI Ready</span>
           </div>
 
           <div className="mt-5 space-y-5">
             <div>
-              <h5 className="text-sm font-semibold text-slate-900">
+              <h5 className="text-sm font-semibold text-text-primary">
                 Learning Objectives
               </h5>
 
@@ -87,9 +85,9 @@ export default function SessionAIPlan({
                 {plan.objectives.map((objective, index) => (
                   <li
                     key={`${plan.id}-objective-${index}`}
-                    className="flex gap-3 text-sm text-slate-700"
+                    className="flex gap-3 text-sm text-text-secondary"
                   >
-                    <span className="font-semibold text-violet-500">
+                    <span className="font-semibold text-text-muted">
                       {index + 1}.
                     </span>
 
@@ -100,7 +98,7 @@ export default function SessionAIPlan({
             </div>
 
             <div>
-              <h5 className="text-sm font-semibold text-slate-900">
+              <h5 className="text-sm font-semibold text-text-primary">
                 Lesson Outline
               </h5>
 
@@ -108,9 +106,9 @@ export default function SessionAIPlan({
                 {plan.lesson_outline.map((step, index) => (
                   <li
                     key={`${plan.id}-outline-${index}`}
-                    className="flex gap-3 text-sm text-slate-700"
+                    className="flex gap-3 text-sm text-text-secondary"
                   >
-                    <span className="font-semibold text-violet-500">
+                    <span className="font-semibold text-text-muted">
                       {index + 1}.
                     </span>
 
@@ -121,7 +119,7 @@ export default function SessionAIPlan({
             </div>
 
             <div>
-              <h5 className="text-sm font-semibold text-slate-900">
+              <h5 className="text-sm font-semibold text-text-primary">
                 Practice Questions
               </h5>
 
@@ -129,9 +127,9 @@ export default function SessionAIPlan({
                 {plan.practice_questions.map((question, index) => (
                   <li
                     key={`${plan.id}-question-${index}`}
-                    className="flex gap-3 text-sm text-slate-700"
+                    className="flex gap-3 text-sm text-text-secondary"
                   >
-                    <span className="font-semibold text-violet-500">
+                    <span className="font-semibold text-text-muted">
                       {index + 1}.
                     </span>
 

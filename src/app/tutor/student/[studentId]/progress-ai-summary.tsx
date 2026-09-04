@@ -49,14 +49,14 @@ export default function ProgressAISummary({
   }
 
   return (
-    <section className="mb-8 rounded-lg border border-slate-200 bg-white">
-      <div className="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <section className="mb-8 rounded-lg border border-border bg-surface">
+      <div className="flex flex-col gap-4 border-b border-border px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-text-primary">
             AI Progress Summary
           </h2>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-text-secondary">
             Analyze past session reviews to identify improvement
             and remaining challenges.
           </p>
@@ -66,7 +66,7 @@ export default function ProgressAISummary({
           type="button"
           onClick={handleGenerate}
           disabled={loading}
-          className="w-fit rounded-md bg-violet-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="ui-button-primary w-fit"
         >
           {loading
             ? "Generating..."
@@ -76,25 +76,25 @@ export default function ProgressAISummary({
 
       {error ? (
         <div className="px-6 py-5">
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error">
             {error}
           </div>
         </div>
       ) : summary ? (
         <div className="space-y-6 px-6 py-6">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">
+            <h3 className="text-sm font-semibold text-text-primary">
               Overall Progress
             </h3>
 
-            <p className="mt-2 text-sm leading-6 text-slate-700">
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
               {summary.summary}
             </p>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
             <div>
-              <h3 className="text-sm font-semibold text-emerald-700">
+              <h3 className="text-sm font-semibold text-success">
                 Improving
               </h3>
 
@@ -103,9 +103,9 @@ export default function ProgressAISummary({
                   (area, index) => (
                     <li
                       key={`${area}-${index}`}
-                      className="text-sm leading-6 text-slate-700"
+                      className="text-sm leading-6 text-text-secondary"
                     >
-                      <span className="mr-2 text-emerald-600">
+                      <span className="mr-2 text-success">
                         ✓
                       </span>
                       {area}
@@ -116,7 +116,7 @@ export default function ProgressAISummary({
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-amber-700">
+              <h3 className="text-sm font-semibold text-warning">
                 Still Struggling
               </h3>
 
@@ -125,9 +125,9 @@ export default function ProgressAISummary({
                   (area, index) => (
                     <li
                       key={`${area}-${index}`}
-                      className="text-sm leading-6 text-slate-700"
+                      className="text-sm leading-6 text-text-secondary"
                     >
-                      <span className="mr-2 text-amber-600">
+                      <span className="mr-2 text-warning">
                         •
                       </span>
                       {area}
@@ -139,7 +139,7 @@ export default function ProgressAISummary({
           </div>
         </div>
       ) : (
-        <div className="px-6 py-8 text-sm text-slate-500">
+        <div className="px-6 py-8 text-sm text-text-secondary">
           Generate a summary to see where the student is
           improving and where additional support is needed.
         </div>

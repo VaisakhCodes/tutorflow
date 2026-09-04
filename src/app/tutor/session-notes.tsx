@@ -36,13 +36,13 @@ export default function SessionNotes({
   };
 
   return (
-    <div className="mt-5 border-t border-slate-200 pt-5">
+    <div className="mt-5 border-t border-border pt-5">
       <div className="mb-3">
-        <h4 className="text-sm font-semibold text-slate-900">
+        <h4 className="text-sm font-semibold text-text-primary">
           Session Notes
         </h4>
 
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-text-secondary">
           Record what was covered, student progress, challenges, and
           important observations.
         </p>
@@ -58,11 +58,11 @@ export default function SessionNotes({
         maxLength={10000}
         placeholder="Write notes about this tutoring session..."
         disabled={isPending}
-        className="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
+        className="ui-control resize-y px-3 py-3 placeholder:text-text-muted"
       />
 
       <div className="mt-2 flex items-center justify-between gap-4">
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-text-muted">
           {notes.length}/10000
         </span>
 
@@ -70,7 +70,7 @@ export default function SessionNotes({
           type="button"
           onClick={handleSave}
           disabled={isPending || !notes.trim()}
-          className="rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="ui-button-primary"
         >
           {isPending ? "Saving..." : "Save notes"}
         </button>
@@ -80,8 +80,8 @@ export default function SessionNotes({
         <div
           className={`mt-3 rounded-md border px-3 py-2 text-sm ${
             isError
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+              ? "border-error-border bg-error-background text-error"
+              : "border-success-border bg-success-background text-success"
           }`}
         >
           {message}

@@ -63,11 +63,12 @@ export default function ScheduleSessionForm({
   }
 
   return (
-    <section className="mb-8 overflow-hidden rounded-md border border-slate-200 bg-white">
-      <div className="px-6 py-5 border-b border-slate-200">
+    <section className="mb-8 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="border-b border-slate-200 px-6 py-5">
         <h2 className="text-lg font-semibold text-slate-900">
           Schedule Session
         </h2>
+
         <p className="mt-1 text-sm text-slate-500">
           Schedule a session with one of your students.
         </p>
@@ -75,19 +76,25 @@ export default function ScheduleSessionForm({
 
       <form onSubmit={handleSubmit} className="space-y-5 p-6">
         {error && (
-          <div className="rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+          <div
+            role="alert"
+            className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
+          >
             {error}
           </div>
         )}
 
         {success && (
-          <div className="rounded-md bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-700">
+          <div
+            role="status"
+            className="rounded-md border border-success-border bg-success-background p-4 text-sm text-success"
+          >
             {success}
           </div>
         )}
 
         {students.length === 0 ? (
-          <div className="rounded-md bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600">
+          <div className="rounded-md border border-border bg-surface-muted p-4 text-sm text-text-secondary">
             Create a student before scheduling a session.
           </div>
         ) : (
@@ -96,7 +103,7 @@ export default function ScheduleSessionForm({
               <div>
                 <label
                   htmlFor="session-student"
-                  className="block text-sm font-medium text-slate-700"
+                  className="block text-sm font-medium text-text-primary"
                 >
                   Student
                 </label>
@@ -106,7 +113,7 @@ export default function ScheduleSessionForm({
                   value={studentId}
                   onChange={(event) => setStudentId(event.target.value)}
                   disabled={isPending}
-                  className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                  className="ui-control mt-1 disabled:bg-surface-muted"
                 >
                   <option value="">Select a student</option>
 
@@ -121,7 +128,7 @@ export default function ScheduleSessionForm({
               <div>
                 <label
                   htmlFor="session-date"
-                  className="block text-sm font-medium text-slate-700"
+                  className="block text-sm font-medium text-text-primary"
                 >
                   Date and time
                 </label>
@@ -132,7 +139,7 @@ export default function ScheduleSessionForm({
                   value={scheduledAt}
                   onChange={(event) => setScheduledAt(event.target.value)}
                   disabled={isPending}
-                  className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                  className="ui-control mt-1 disabled:bg-surface-muted"
                 />
               </div>
             </div>
@@ -140,7 +147,7 @@ export default function ScheduleSessionForm({
             <div>
               <label
                 htmlFor="session-topic"
-                className="block text-sm font-medium text-slate-700"
+                className="block text-sm font-medium text-text-primary"
               >
                 Topic
               </label>
@@ -152,7 +159,7 @@ export default function ScheduleSessionForm({
                 onChange={(event) => setTopic(event.target.value)}
                 disabled={isPending}
                 placeholder="Linear equations"
-                className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-xs outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                className="ui-control mt-1 placeholder:text-text-muted"
               />
             </div>
 
@@ -160,7 +167,7 @@ export default function ScheduleSessionForm({
               <button
                 type="submit"
                 disabled={isPending}
-                className="rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="ui-button-primary"
               >
                 {isPending ? "Scheduling..." : "Schedule session"}
               </button>

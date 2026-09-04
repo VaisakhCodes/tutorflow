@@ -56,11 +56,12 @@ export default function AddStudentForm() {
   }
 
   return (
-    <section className="mb-8 overflow-hidden rounded-md border border-slate-200 bg-white">
+    <section className="mb-8 overflow-hidden rounded-lg border border-slate-200 bg-white">
       <div className="border-b border-slate-200 px-6 py-5">
         <h2 className="text-lg font-semibold text-slate-900">
           Add Student
         </h2>
+
         <p className="mt-1 text-sm text-slate-500">
           Create a student account and learning profile.
         </p>
@@ -70,7 +71,7 @@ export default function AddStudentForm() {
         {error && (
           <div
             role="alert"
-            className="rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-700"
+            className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
           >
             {error}
           </div>
@@ -79,7 +80,7 @@ export default function AddStudentForm() {
         {success && (
           <div
             role="status"
-            className="rounded-md bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-700"
+            className="rounded-md border border-success-border bg-success-background p-4 text-sm text-success"
           >
             {success}
           </div>
@@ -89,7 +90,7 @@ export default function AddStudentForm() {
           <div>
             <label
               htmlFor="student-name"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-sm font-medium text-text-primary"
             >
               Student name
             </label>
@@ -101,7 +102,7 @@ export default function AddStudentForm() {
               value={name}
               onChange={(event) => setName(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="ui-control mt-1 placeholder:text-text-muted"
               placeholder="John Doe"
             />
           </div>
@@ -109,7 +110,7 @@ export default function AddStudentForm() {
           <div>
             <label
               htmlFor="student-email"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-sm font-medium text-text-primary"
             >
               Email address
             </label>
@@ -122,7 +123,7 @@ export default function AddStudentForm() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="ui-control mt-1 placeholder:text-text-muted"
               placeholder="student@example.com"
             />
           </div>
@@ -130,7 +131,7 @@ export default function AddStudentForm() {
           <div>
             <label
               htmlFor="student-password"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-sm font-medium text-text-primary"
             >
               Temporary password
             </label>
@@ -143,7 +144,7 @@ export default function AddStudentForm() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="ui-control mt-1 placeholder:text-text-muted"
               placeholder="Enter a temporary password"
             />
           </div>
@@ -151,7 +152,7 @@ export default function AddStudentForm() {
           <div>
             <label
               htmlFor="student-subject"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-sm font-medium text-text-primary"
             >
               Subject
             </label>
@@ -163,7 +164,7 @@ export default function AddStudentForm() {
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="ui-control mt-1 placeholder:text-text-muted"
               placeholder="Mathematics"
             />
           </div>
@@ -171,7 +172,7 @@ export default function AddStudentForm() {
           <div>
             <label
               htmlFor="student-level"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-sm font-medium text-text-primary"
             >
               Current level
             </label>
@@ -183,7 +184,7 @@ export default function AddStudentForm() {
               value={currentLevel}
               onChange={(event) => setCurrentLevel(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="ui-control mt-1 placeholder:text-text-muted"
               placeholder="Grade 10"
             />
           </div>
@@ -191,7 +192,7 @@ export default function AddStudentForm() {
           <div>
             <label
               htmlFor="student-goals"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-sm font-medium text-text-primary"
             >
               Learning goals
             </label>
@@ -203,7 +204,7 @@ export default function AddStudentForm() {
               value={learningGoals}
               onChange={(event) => setLearningGoals(event.target.value)}
               disabled={isPending}
-              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+              className="ui-control mt-1 resize-y placeholder:text-text-muted"
               placeholder="Improve algebra and problem solving"
             />
           </div>
@@ -212,7 +213,7 @@ export default function AddStudentForm() {
         <div>
           <label
             htmlFor="student-weak-areas"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-text-primary"
           >
             Weak areas
           </label>
@@ -224,7 +225,7 @@ export default function AddStudentForm() {
             value={weakAreas}
             onChange={(event) => setWeakAreas(event.target.value)}
             disabled={isPending}
-            className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-nonefocus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+            className="ui-control mt-1 resize-y placeholder:text-text-muted"
             placeholder="Fractions, equations, word problems"
           />
         </div>
@@ -233,7 +234,7 @@ export default function AddStudentForm() {
           <button
             type="submit"
             disabled={isPending}
-            className="rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="ui-button-primary"
           >
             {isPending ? "Creating student..." : "Create student"}
           </button>
