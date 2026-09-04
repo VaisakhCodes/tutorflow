@@ -56,13 +56,13 @@ export default function AddStudentForm() {
   }
 
   return (
-    <section className="mb-8 overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-6 py-5">
-        <h2 className="text-lg font-semibold text-slate-900">
+    <section className="ui-card mb-8 overflow-hidden">
+      <div className="border-b border-border px-6 py-5">
+        <h2 className="text-lg font-semibold text-text-primary">
           Add Student
         </h2>
 
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-text-secondary">
           Create a student account and learning profile.
         </p>
       </div>
@@ -71,7 +71,7 @@ export default function AddStudentForm() {
         {error && (
           <div
             role="alert"
-            className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
+            className="rounded-[var(--radius-sm)] border border-error-border bg-error-background p-4 text-sm text-error"
           >
             {error}
           </div>
@@ -80,7 +80,7 @@ export default function AddStudentForm() {
         {success && (
           <div
             role="status"
-            className="rounded-md border border-success-border bg-success-background p-4 text-sm text-success"
+            className="rounded-[var(--radius-sm)] border border-success-border bg-success-background p-4 text-sm text-success"
           >
             {success}
           </div>
