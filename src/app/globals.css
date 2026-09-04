@@ -1,60 +1,71 @@
 @import "tailwindcss";
 
 :root {
-  /* Core surfaces */
-  --background: #f7f8f6;
-  --foreground: #172033;
-  --surface: #ffffff;
-  --surface-muted: #f1f3f2;
+  /* Core surfaces — warm paper, not clinical white */
+  --background: #f5f1ea;
+  --foreground: #211c16;
+  --surface: #fffdfa;
+  --surface-muted: #ece5d8;
+  --surface-elevated: #ffffff;
 
   /* Text */
-  --text-primary: #172033;
-  --text-secondary: #5f6776;
-  --text-muted: #737b88;
+  --text-primary: #211c16;
+  --text-secondary: #57503f;
+  --text-muted: #837a68;
 
   /* Borders */
-  --border: #d9dee5;
-  --border-strong: #c4cbd4;
+  --border: #ded4c0;
+  --border-strong: #b9ab8d;
 
-  /* Brand */
-  --primary: #0f766e;
-  --primary-hover: #115e59;
-  --primary-foreground: #ffffff;
+  /* Brand — burnt rust, not SaaS-teal */
+  --primary: #a3401e;
+  --primary-hover: #832f14;
+  --primary-foreground: #fffdfa;
 
-  /* Secondary actions */
-  --secondary: #334155;
-  --secondary-hover: #1f2937;
-  --secondary-foreground: #ffffff;
+  /* Secondary — deep ink-slate */
+  --secondary: #26344a;
+  --secondary-hover: #18202e;
+  --secondary-foreground: #fffdfa;
 
-  /* Accent */
-  --accent: #b45309;
-  --accent-foreground: #ffffff;
+  /* Accent — muted ochre */
+  --accent: #8a6d1f;
+  --accent-foreground: #fffdfa;
 
   /* Semantic states */
-  --success: #147d64;
-  --success-background: #ecfdf5;
-  --success-border: #a7f3d0;
+  --success: #2f6b3a;
+  --success-background: #eaf1e6;
+  --success-border: #bcd6ae;
 
-  --warning: #a16207;
-  --warning-background: #fefce8;
-  --warning-border: #fde68a;
+  --warning: #92610f;
+  --warning-background: #f7ecd7;
+  --warning-border: #e2c98a;
 
-  --error: #b42318;
-  --error-background: #fef2f2;
-  --error-border: #fecaca;
+  --error: #a3241e;
+  --error-background: #f8e9e6;
+  --error-border: #e0aca4;
 
-  --info: #2563eb;
-  --info-background: #eff6ff;
-  --info-border: #bfdbfe;
+  --info: #29506e;
+  --info-background: #e7eef2;
+  --info-border: #aec7d5;
 
-  /* AI-specific accent */
-  --ai: #6d28d9;
-  --ai-background: #f5f3ff;
-  --ai-border: #ddd6fe;
+  /* AI-specific accent — kept distinct from brand, muted plum instead of default purple */
+  --ai: #5c3d5c;
+  --ai-background: #ede4ec;
+  --ai-border: #c9b0c6;
 
   /* Interaction */
-  --focus: #0f766e;
-  --focus-ring: rgb(15 118 110 / 0.15);
+  --focus: #a3401e;
+  --focus-ring: rgb(163 64 30 / 0.18);
+
+  /* Radius scale — restrained, not uniform rounded-everything */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+
+  /* Elevation — single soft layer, no glassmorphism */
+  --shadow-sm: 0 1px 2px rgb(33 28 22 / 0.06);
+  --shadow-md: 0 4px 12px rgb(33 28 22 / 0.08);
+  --shadow-lg: 0 12px 32px rgb(33 28 22 / 0.12);
 }
 
 @theme inline {
@@ -63,6 +74,7 @@
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
+  --color-surface-elevated: var(--surface-elevated);
 
   /* Text */
   --color-text-primary: var(--text-primary);
@@ -115,14 +127,25 @@
   /* Interaction */
   --color-focus: var(--focus);
 
+  /* Radius */
+  --radius-token-sm: var(--radius-sm);
+  --radius-token-md: var(--radius-md);
+  --radius-token-lg: var(--radius-lg);
+
   /* Typography */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --tracking-tight: -0.015em;
+  --tracking-wide: 0.08em;
 }
 
 /* Shared form controls */
 @utility ui-control {
-  @apply block w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none transition;
+  @apply block w-full rounded-[var(--radius-sm)] border border-border bg-surface px-3 py-2.5 text-sm text-text-primary outline-none transition;
+
+  &:hover {
+    border-color: var(--border-strong);
+  }
 
   &:focus {
     border-color: var(--focus);
@@ -131,12 +154,13 @@
 
   &:disabled {
     background-color: var(--surface-muted);
+    cursor: not-allowed;
   }
 }
 
 /* Primary button */
 @utility ui-button-primary {
-  @apply inline-flex items-center justify-center rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition;
+  @apply inline-flex items-center justify-center rounded-[var(--radius-sm)] bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition;
 
   &:hover {
     background-color: var(--primary-hover);
@@ -155,7 +179,7 @@
 
 /* Secondary button */
 @utility ui-button-secondary {
-  @apply inline-flex items-center justify-center rounded-md border border-border bg-surface px-4 py-2.5 text-sm font-medium text-text-primary transition;
+  @apply inline-flex items-center justify-center rounded-[var(--radius-sm)] border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-text-primary transition;
 
   &:hover {
     border-color: var(--border-strong);
@@ -175,7 +199,7 @@
 
 /* Quiet / tertiary button */
 @utility ui-button-ghost {
-  @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition;
+  @apply inline-flex items-center justify-center rounded-[var(--radius-sm)] px-3 py-2 text-sm font-semibold text-text-secondary transition;
 
   &:hover {
     background-color: var(--surface-muted);
@@ -195,7 +219,7 @@
 
 /* Destructive button */
 @utility ui-button-danger {
-  @apply inline-flex items-center justify-center rounded-md border border-error-border bg-surface px-3 py-2 text-sm font-medium text-error transition;
+  @apply inline-flex items-center justify-center rounded-[var(--radius-sm)] border border-error-border bg-surface px-3 py-2 text-sm font-semibold text-error transition;
 
   &:hover {
     background-color: var(--error-background);
@@ -214,32 +238,60 @@
 
 /* Base badge */
 @utility ui-badge {
-  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide uppercase;
 }
 
 /* Semantic badges */
 @utility ui-badge-success {
-  @apply inline-flex items-center rounded-full bg-success-background px-2.5 py-1 text-xs font-semibold text-success;
+  @apply inline-flex items-center rounded-full bg-success-background px-2.5 py-1 text-xs font-semibold tracking-wide uppercase text-success;
 }
 
 @utility ui-badge-warning {
-  @apply inline-flex items-center rounded-full bg-warning-background px-2.5 py-1 text-xs font-semibold text-warning;
+  @apply inline-flex items-center rounded-full bg-warning-background px-2.5 py-1 text-xs font-semibold tracking-wide uppercase text-warning;
 }
 
 @utility ui-badge-error {
-  @apply inline-flex items-center rounded-full bg-error-background px-2.5 py-1 text-xs font-semibold text-error;
+  @apply inline-flex items-center rounded-full bg-error-background px-2.5 py-1 text-xs font-semibold tracking-wide uppercase text-error;
 }
 
 @utility ui-badge-info {
-  @apply inline-flex items-center rounded-full bg-info-background px-2.5 py-1 text-xs font-semibold text-info;
+  @apply inline-flex items-center rounded-full bg-info-background px-2.5 py-1 text-xs font-semibold tracking-wide uppercase text-info;
 }
 
 @utility ui-badge-ai {
-  @apply inline-flex items-center rounded-full bg-ai-background px-2.5 py-1 text-xs font-semibold text-ai;
+  @apply inline-flex items-center rounded-full bg-ai-background px-2.5 py-1 text-xs font-semibold tracking-wide uppercase text-ai;
+}
+
+/* Card surface — new utility for cohesive elevation across pages */
+@utility ui-card {
+  @apply rounded-[var(--radius-md)] border border-border bg-surface;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Elevated surface — modals, popovers, key panels */
+@utility ui-surface-elevated {
+  @apply rounded-[var(--radius-lg)] border border-border bg-surface-elevated;
+  box-shadow: var(--shadow-md);
+}
+
+::selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
+  letter-spacing: var(--tracking-tight);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  letter-spacing: var(--tracking-tight);
+  font-weight: 700;
 }
