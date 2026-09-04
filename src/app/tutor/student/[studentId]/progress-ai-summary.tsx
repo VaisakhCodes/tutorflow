@@ -49,7 +49,7 @@ export default function ProgressAISummary({
   }
 
   return (
-    <section className="mb-8 rounded-lg border border-border bg-surface">
+    <section className="mb-8 rounded-[var(--radius-md)] border border-l-4 border-border border-l-ai bg-surface">
       <div className="flex flex-col gap-4 border-b border-border px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-text-primary">
@@ -76,7 +76,7 @@ export default function ProgressAISummary({
 
       {error ? (
         <div className="px-6 py-5">
-          <div className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error">
+          <div className="rounded-[var(--radius-sm)] border border-error-border bg-error-background p-4 text-sm text-error">
             {error}
           </div>
         </div>
