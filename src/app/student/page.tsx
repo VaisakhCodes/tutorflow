@@ -163,7 +163,7 @@ export default async function StudentPage() {
   if (!supabase) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
-        <div className="w-full max-w-md rounded-lg border border-error-border bg-surface p-6 text-center">
+        <div className="ui-surface-elevated w-full max-w-md border-l-4 border-l-error p-6 text-center">
           <h1 className="text-lg font-semibold text-error">
             Supabase is not configured
           </h1>
@@ -190,7 +190,7 @@ export default async function StudentPage() {
   if (studentError || !student) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
-        <div className="w-full max-w-md rounded-lg border border-error-border bg-surface p-6 text-center">
+        <div className="ui-surface-elevated w-full max-w-md border-l-4 border-l-error p-6 text-center">
           <h1 className="text-lg font-semibold text-error">
             Student profile not found
           </h1>
@@ -272,9 +272,12 @@ export default async function StudentPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-border bg-surface">
+      <header className="border-b-2 border-border bg-surface">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-          <span className="text-xl font-bold tracking-tight text-primary">
+          <span className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-text-primary">
+            <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] bg-primary text-sm font-bold text-primary-foreground">
+              T
+            </span>
             TutorFlow
           </span>
 
@@ -292,11 +295,11 @@ export default async function StudentPage() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:py-10">
         {/* Page introduction */}
         <div className="mb-8">
-          <span className="ui-badge-info mb-3">
+          <span className="ui-badge-warning mb-3">
             Student Dashboard
           </span>
 
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary sm:text-4xl">
+          <h1 className="font-serif text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">
             Welcome, {student.name}
           </h1>
 
@@ -306,14 +309,14 @@ export default async function StudentPage() {
         </div>
 
         {sessionsError && (
-          <div className="mb-8 rounded-md border border-error-border bg-error-background p-4 text-sm text-error">
+          <div className="mb-8 rounded-[var(--radius-sm)] border border-error-border bg-error-background p-4 text-sm text-error">
             Your session history could not be loaded completely. Please try
             again later.
           </div>
         )}
 
         {/* Learning Profile */}
-        <section className="mb-10 overflow-hidden rounded-lg border border-border bg-surface">
+        <section className="ui-card mb-10 overflow-hidden">
           <div className="border-b border-border px-6 py-5">
             <h2 className="text-lg font-semibold text-text-primary">
               My Learning Profile
@@ -369,7 +372,7 @@ export default async function StudentPage() {
 
         {/* Upcoming Sessions */}
         <section className="mb-10">
-          <div className="flex items-end justify-between gap-4 border-b border-border pb-4">
+          <div className="flex items-end justify-between gap-4 border-b-2 border-border pb-4">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-text-primary">
                 Upcoming Sessions
@@ -427,7 +430,7 @@ export default async function StudentPage() {
 
         {/* Recent Sessions */}
         <section className="mb-10">
-          <div className="flex items-end justify-between gap-4 border-b border-border pb-4">
+          <div className="flex items-end justify-between gap-4 border-b-2 border-border pb-4">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-text-primary">
                 Recent Sessions
@@ -504,7 +507,7 @@ export default async function StudentPage() {
 
         {/* Homework */}
         <section>
-          <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-3 border-b-2 border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-text-primary">
                 Homework
