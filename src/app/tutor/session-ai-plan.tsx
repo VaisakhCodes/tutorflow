@@ -53,13 +53,13 @@ export default function SessionAIPlan({
           </button>
 
           {error && (
-            <div className="mt-3 rounded-md border border-error-border bg-error-background p-3 text-sm text-error">
+            <div className="mt-3 rounded-[var(--radius-sm)] border border-error-border bg-error-background p-3 text-sm text-error">
               {error}
             </div>
           )}
         </>
       ) : (
-        <div className="rounded-lg border border-border bg-surface p-5">
+        <div className="rounded-[var(--radius-md)] border border-l-4 border-border border-l-ai bg-surface p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h4 className="text-base font-semibold text-text-primary">
