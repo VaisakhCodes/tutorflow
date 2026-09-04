@@ -78,7 +78,7 @@ export default function SessionNotes({
 
       {message && (
         <div
-          className={`mt-3 rounded-md border px-3 py-2 text-sm ${
+          className={`mt-3 rounded-[var(--radius-sm)] border px-3 py-2 text-sm ${
             isError
               ? "border-error-border bg-error-background text-error"
               : "border-success-border bg-success-background text-success"
