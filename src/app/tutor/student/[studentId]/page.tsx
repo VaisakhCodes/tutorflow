@@ -91,7 +91,7 @@ export default async function StudentProgressPage({
   if (!supabase) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
-        <div className="w-full max-w-md rounded-lg border border-error-border bg-surface p-6 text-center">
+        <div className="ui-surface-elevated w-full max-w-md border-l-4 border-l-error p-6 text-center">
           <h1 className="text-lg font-semibold text-error">
             Supabase is not configured
           </h1>
@@ -152,13 +152,16 @@ export default async function StudentProgressPage({
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-border bg-surface">
+      <header className="border-b-2 border-border bg-surface">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link
             href="/tutor"
-            className="text-xl font-bold tracking-tight text-primary"
+            className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-text-primary"
             aria-label="TutorFlow tutor dashboard"
           >
+            <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] bg-primary text-sm font-bold text-primary-foreground">
+              T
+            </span>
             TutorFlow
           </Link>
 
@@ -189,11 +192,11 @@ export default async function StudentProgressPage({
 
         {/* Page introduction */}
         <div className="mb-8">
-          <span className="ui-badge-info mb-3">
+          <span className="ui-badge-warning mb-3">
             Student Progress
           </span>
 
-          <h1 className="text-3xl font-bold tracking-tight text-text-primary">
+          <h1 className="font-serif text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">
             {student.name}
           </h1>
 
@@ -203,7 +206,7 @@ export default async function StudentProgressPage({
         </div>
 
         {/* Student profile */}
-        <section className="mb-10 overflow-hidden rounded-lg border border-border bg-surface">
+        <section className="ui-card mb-10 overflow-hidden">
           <div className="border-b border-border px-6 py-5">
             <h2 className="text-lg font-semibold text-text-primary">
               Student Profile
@@ -262,7 +265,7 @@ export default async function StudentProgressPage({
 
         {/* Session history */}
         <section className="mt-10">
-          <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-3 border-b-2 border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-text-primary">
                 Session History
@@ -285,7 +288,7 @@ export default async function StudentProgressPage({
             <div className="py-6">
               <div
                 role="alert"
-                className="rounded-md border border-error-border bg-error-background p-4 text-sm text-error"
+                className="rounded-[var(--radius-sm)] border border-error-border bg-error-background p-4 text-sm text-error"
               >
                 Failed to load session history. Please try again.
               </div>
